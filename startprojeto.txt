@@ -1,0 +1,42 @@
+## Subir o projeto localmente
+
+cd painel-padrao
+docker compose up --build
+
+Acesse: http://localhost
+Backend: http://localhost:8000
+MinIO console: http://localhost:9001 (minioadmin / minioadmin)
+
+
+## Criar primeiro admin (se não usar o formulário na tela de login)
+
+# 1. Gerar hash da senha
+docker compose exec backend python -c "import bcrypt; print(bcrypt.hashpw(b'SuaSenhaAqui', bcrypt.gensalt()).decode())"
+
+# 2. Acessar o banco
+docker compose exec db psql -U admin -d appdb
+
+# 3. Inserir o admin (Customer Service / ACC)
+INSERT INTO users (id, email, name, password_hash, auth_provider, company, sector, role, is_active, created_at)
+VALUES (
+  gen_random_uuid(),
+  'seu@email.com',
+  'Seu Nome',
+  '$2b$12$HASH_GERADO_ACIMA',
+  'local',
+  'ACC',
+  'Customer_Service',
+  'admin',
+  true,
+  now()
+);
+
+
+## Criar outros usuários
+
+Após logar como admin, acesse /admin/usuarios para criar usuários pelo painel.
+
+
+## Parar e limpar volumes (cuidado: apaga dados)
+
+docker compose down -v
