@@ -1,0 +1,10 @@
+comando para rodar no servidor em casos de ajuste:
+    docker rm -f $(docker ps -q --filter name=flowcheck_backend) 
+    docker rm -f $(docker ps -q --filter name=flowcheck_painel)
+    docker rmi easypanel/flowcheck/painel easypanel/flowcheck/backend 2>/dev/null; true
+
+comandos de consulta ao banco:
+    \c banco-teste
+    UPDATE users SET role = 'admin' WHERE email = 'vinidatadev@outlook.com';
+    SELECT email, role, is_active FROM users;
+    \dt

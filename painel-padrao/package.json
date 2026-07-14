@@ -1,0 +1,19 @@
+{
+  "name": "painel-fca",
+  "version": "2.0.0",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "gen-sounds": "node scripts/gen-sounds.js"
+  },
+  "dependencies": {
+    "@azure/msal-browser": "^3.10.0",
+    "vue": "^3.4.0",
+    "vue-router": "^4.3.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^5.0.0",
+    "vite": "^5.0.0"
+  }
+}
