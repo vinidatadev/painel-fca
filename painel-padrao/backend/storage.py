@@ -10,6 +10,12 @@ SECRET_KEY = os.getenv("MINIO_SECRET_KEY", "minioadmin")
 BUCKET     = os.getenv("MINIO_BUCKET", "fca-anexos")
 PUBLIC_URL = os.getenv("MINIO_PUBLIC_URL", "http://localhost:9000")
 
+# Monta a URL do endpoint: se já vier com protocolo, usa como está; senão adiciona http://
+def _endpoint_url() -> str:
+    if ENDPOINT.startswith("http://") or ENDPOINT.startswith("https://"):
+        return ENDPOINT
+    return f"http://{ENDPOINT}"
+
 ALLOWED_CONTENT_TYPES = {"image/jpeg", "image/png", "image/webp", "application/pdf"}
 MAX_SIZE = 20 * 1024 * 1024  # 20 MB
 
@@ -17,7 +23,7 @@ MAX_SIZE = 20 * 1024 * 1024  # 20 MB
 def _client():
     return boto3.client(
         "s3",
-        endpoint_url=f"http://{ENDPOINT}",
+        endpoint_url=_endpoint_url(),
         aws_access_key_id=ACCESS_KEY,
         aws_secret_access_key=SECRET_KEY,
         region_name="us-east-1",
@@ -54,7 +60,7 @@ def get_presigned_url(key: str, expires: int = 3600) -> str:
     )
     # O endpoint interno (minio:9000) não é acessível pelo browser.
     # Substitui pelo PUBLIC_URL configurado no .env
-    internal = f"http://{ENDPOINT}"
+    internal = _endpoint_url()
     if PUBLIC_URL and url.startswith(internal):
         url = url.replace(internal, PUBLIC_URL, 1)
     return url
