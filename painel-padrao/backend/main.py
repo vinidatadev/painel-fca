@@ -81,6 +81,33 @@ async def lifespan(app: FastAPI):
         await conn.run_sync(Base.metadata.create_all)
         # Migrações incrementais — seguras para re-execução
         await conn.execute(_sql(
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS company VARCHAR(20) NOT NULL DEFAULT 'ACC'"
+        ))
+        await conn.execute(_sql(
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS sector VARCHAR(30) NOT NULL DEFAULT 'Customer_Service'"
+        ))
+        await conn.execute(_sql(
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS matricula VARCHAR(20)"
+        ))
+        await conn.execute(_sql(
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS turno VARCHAR(1)"
+        ))
+        await conn.execute(_sql(
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS telefone VARCHAR(20)"
+        ))
+        await conn.execute(_sql(
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url TEXT"
+        ))
+        await conn.execute(_sql(
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS notif_email BOOLEAN NOT NULL DEFAULT TRUE"
+        ))
+        await conn.execute(_sql(
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS notif_sms BOOLEAN NOT NULL DEFAULT FALSE"
+        ))
+        await conn.execute(_sql(
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS notif_push BOOLEAN NOT NULL DEFAULT TRUE"
+        ))
+        await conn.execute(_sql(
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS notif_som VARCHAR(10) NOT NULL DEFAULT 'som1'"
         ))
         await conn.execute(_sql(
