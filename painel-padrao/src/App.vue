@@ -4,7 +4,17 @@
   </div>
 
   <template v-else>
-    <div v-if="!user" class="login-wrapper">
+    <!-- Troca de senha obrigatória no primeiro acesso -->
+    <div v-if="user && user.must_change_password" class="login-wrapper">
+      <ChangePasswordView @done="onPasswordChanged" />
+    </div>
+
+    <!-- Onboarding obrigatório (apenas não-admin) -->
+    <div v-else-if="user && !user.onboarding_completed && user.role !== 'admin'" class="login-wrapper">
+      <OnboardingView @done="onOnboardingDone" />
+    </div>
+
+    <div v-else-if="!user" class="login-wrapper">
       <LoginView @login="onLogin" />
     </div>
 
@@ -133,6 +143,13 @@
               <span class="sidebar-item-label">Configurações</span>
               <span v-if="sidebarCollapsed" class="sidebar-tooltip">Configurações</span>
             </RouterLink>
+            <RouterLink class="sidebar-item" to="/admin/onboarding" @click="sidebarOpen = false" :aria-label="sidebarCollapsed ? 'Onboarding' : undefined">
+              <span class="sidebar-item-icon">
+                <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><rect x="2" y="4" width="14" height="10" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M7.5 7.5l4 2-4 2V7.5z" fill="currentColor" opacity=".7"/></svg>
+              </span>
+              <span class="sidebar-item-label">Onboarding</span>
+              <span v-if="sidebarCollapsed" class="sidebar-tooltip">Onboarding</span>
+            </RouterLink>
           </div>
         </nav>
 
@@ -204,6 +221,8 @@ import { ref, computed, inject, onMounted, provide } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { clearLocalToken, api, getLocalToken } from './api'
 import LoginView from './views/LoginView.vue'
+import ChangePasswordView from './views/ChangePasswordView.vue'
+import OnboardingView from './views/OnboardingView.vue'
 import UserAvatar from './components/UserAvatar.vue'
 import NotificationPanel from './components/NotificationPanel.vue'
 
@@ -229,6 +248,7 @@ const ROUTE_TITLES = {
   '/admin/comunicados': 'Comunicados',
   '/admin/help': 'Help Admin',
   '/admin/relatorio': 'Relatório',
+  '/admin/onboarding': 'Onboarding',
 }
 const routeTitle = computed(() => {
   const path = route.path
@@ -379,6 +399,20 @@ onMounted(async () => {
 async function onLogin(userData) {
   user.value = userData
   await _afterLogin(userData)
+  router.replace('/dashboard')
+}
+
+async function onPasswordChanged() {
+  if (user.value) user.value.must_change_password = false
+  // Atualiza dados do usuário
+  try {
+    const me = await api.auth.me().catch(() => null)
+    if (me) user.value = { ...user.value, ...me }
+  } catch { /* silencioso */ }
+}
+
+async function onOnboardingDone() {
+  if (user.value) user.value.onboarding_completed = true
   router.replace('/dashboard')
 }
 

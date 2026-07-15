@@ -25,6 +25,7 @@ from routes.help import router as help_router
 from routes.admin import router as admin_router
 from routes.notifications import router as notifications_router
 from routes.bi import router as bi_router
+from routes.onboarding import router as onboarding_router
 import storage
 
 load_dotenv()
@@ -210,6 +211,44 @@ async def lifespan(app: FastAPI):
         await conn.execute(_sql(
             "CREATE INDEX IF NOT EXISTS ix_notificacoes_created_at ON notificacoes(created_at)"
         ))
+        # Migrações: onboarding e primeiro acesso
+        await conn.execute(_sql(
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS must_change_password BOOLEAN NOT NULL DEFAULT TRUE"
+        ))
+        await conn.execute(_sql(
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS onboarding_completed BOOLEAN NOT NULL DEFAULT FALSE"
+        ))
+        # Usuários já existentes não precisam trocar senha nem refazer onboarding
+        await conn.execute(_sql(
+            "UPDATE users SET must_change_password = FALSE "
+            "WHERE must_change_password = TRUE AND password_hash IS NOT NULL"
+        ))
+        await conn.execute(_sql(
+            "UPDATE users SET onboarding_completed = TRUE WHERE onboarding_completed = FALSE"
+        ))
+        await conn.execute(_sql(
+            "CREATE TABLE IF NOT EXISTS onboarding_videos ("
+            "    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),"
+            "    titulo VARCHAR(200) NOT NULL,"
+            "    descricao TEXT,"
+            "    video_key TEXT NOT NULL,"
+            "    ordem INTEGER NOT NULL DEFAULT 0,"
+            "    ativo BOOLEAN NOT NULL DEFAULT TRUE,"
+            "    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()"
+            ")"
+        ))
+        await conn.execute(_sql(
+            "CREATE TABLE IF NOT EXISTS onboarding_progressos ("
+            "    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),"
+            "    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,"
+            "    video_id UUID NOT NULL REFERENCES onboarding_videos(id) ON DELETE CASCADE,"
+            "    assistido_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),"
+            "    UNIQUE(user_id, video_id)"
+            ")"
+        ))
+        await conn.execute(_sql(
+            "CREATE INDEX IF NOT EXISTS ix_onboarding_progressos_user_id ON onboarding_progressos(user_id)"
+        ))
         # Remove coluna legada anexo_key se existir
         await conn.execute(_sql("""
             DO $$
@@ -229,6 +268,12 @@ async def lifespan(app: FastAPI):
         storage.ensure_bucket()
     except Exception as e:
         logger.warning("MinIO indisponível no startup (não crítico): %s", e)
+    # Garante bucket de onboarding
+    try:
+        import onboarding_storage
+        onboarding_storage.ensure_onboarding_bucket()
+    except Exception as e:
+        logger.warning("MinIO onboarding bucket indisponível no startup: %s", e)
     async with AsyncSessionLocal() as db:
         await seed_opcoes(db)
     asyncio.create_task(_timeout_job())
@@ -268,6 +313,7 @@ app.include_router(help_router, prefix="/api")
 app.include_router(admin_router, prefix="/api")
 app.include_router(notifications_router, prefix="/api")
 app.include_router(bi_router, prefix="/api")
+app.include_router(onboarding_router, prefix="/api")
 
 
 @app.get("/health")

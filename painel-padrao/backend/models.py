@@ -27,6 +27,8 @@ class User(Base):
     notif_som: Mapped[str] = mapped_column(String(10), default="som1", nullable=False)
     acesso_relatorio: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    must_change_password: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    onboarding_completed: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )
@@ -231,3 +233,42 @@ class Notificacao(Base):
     )
 
     user: Mapped["User"] = relationship("User", foreign_keys=[user_id])
+
+
+# ── Onboarding ────────────────────────────────────────────────────────────────
+
+class OnboardingVideo(Base):
+    """Vídeos de onboarding gerenciados pelo admin. Armazenados no bucket fca-arquivos."""
+    __tablename__ = "onboarding_videos"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    titulo: Mapped[str] = mapped_column(String(200), nullable=False)
+    descricao: Mapped[str | None] = mapped_column(Text, nullable=True)
+    video_key: Mapped[str] = mapped_column(Text, nullable=False)  # object key no MinIO
+    ordem: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    ativo: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
+
+    progressos: Mapped[list["OnboardingProgresso"]] = relationship(
+        "OnboardingProgresso", back_populates="video", cascade="all, delete-orphan"
+    )
+
+
+class OnboardingProgresso(Base):
+    """Controle de quais vídeos cada usuário já assistiu."""
+    __tablename__ = "onboarding_progressos"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    video_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("onboarding_videos.id", ondelete="CASCADE"), nullable=False
+    )
+    assistido_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
+
+    video: Mapped["OnboardingVideo"] = relationship("OnboardingVideo", back_populates="progressos")

@@ -43,6 +43,8 @@ class MeResponse(BaseModel):
     notif_som: str
     avatar_url: str | None
     acesso_relatorio: bool
+    must_change_password: bool
+    onboarding_completed: bool
 
 
 @router.get("/me", response_model=MeResponse)
@@ -68,6 +70,8 @@ async def me(
         notif_som=user.notif_som if user.notif_som else "som1",
         avatar_url=user.avatar_url,
         acesso_relatorio=user.acesso_relatorio,
+        must_change_password=user.must_change_password,
+        onboarding_completed=user.onboarding_completed,
     )
 
 
@@ -100,6 +104,8 @@ async def login(request: Request, body: LoginRequest, db: AsyncSession = Depends
             "role": user.role,
             "avatar_url": user.avatar_url,
             "acesso_relatorio": user.acesso_relatorio,
+            "must_change_password": user.must_change_password,
+            "onboarding_completed": user.onboarding_completed,
         }
     }
 
@@ -119,7 +125,9 @@ async def setup_first_admin(request: Request, body: SetupRequest, db: AsyncSessi
         company="ACC",
         sector="Customer_Service",
         role="admin",
-        is_active=True
+        is_active=True,
+        must_change_password=False,
+        onboarding_completed=True,
     )
     db.add(admin)
     await db.commit()
@@ -145,3 +153,27 @@ async def setup_status(db: AsyncSession = Depends(get_db)):
     """Retorna se o setup inicial ainda está disponível (banco sem usuários)."""
     count = await db.execute(select(func.count()).select_from(User))
     return {"setup_disponivel": count.scalar() == 0}
+
+
+class ChangePasswordRequest(BaseModel):
+    nova_senha: str = Field(..., min_length=8, max_length=100)
+
+
+@router.post("/change-password")
+async def change_password(
+    body: ChangePasswordRequest,
+    current: dict = Depends(require_user()),
+    db: AsyncSession = Depends(get_db),
+):
+    """Troca a senha do usuário logado. Limpa o flag must_change_password."""
+    result = await db.execute(select(User).where(User.email == current["email"]))
+    user = result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuário não encontrado")
+    if user.auth_provider != "local":
+        raise HTTPException(status_code=400, detail="Conta Microsoft não usa senha local")
+
+    user.password_hash = hash_password(body.nova_senha)
+    user.must_change_password = False
+    await db.commit()
+    return {"ok": True}

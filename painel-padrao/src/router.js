@@ -20,6 +20,7 @@ const routes = [
     }
   },
   { path: '/admin/comunicados', component: () => import('./views/AdminComunicadosView.vue') },
+  { path: '/admin/onboarding', component: () => import('./views/AdminOnboardingView.vue') },
   { path: '/help', component: () => import('./views/HelpView.vue') },
   { path: '/perfil', component: () => import('./views/PerfilView.vue') },
   { path: '/login', redirect: '/dashboard' },

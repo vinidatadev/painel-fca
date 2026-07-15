@@ -82,6 +82,7 @@ async function downloadRequest(method, path) {
 export const api = {
   auth: {
     me: () => request('GET', '/api/auth/me'),
+    changePassword: (nova_senha) => request('POST', '/api/auth/change-password', { nova_senha }),
     login: (email, password) =>
       fetch(`${BASE_URL}/api/auth/login`, {
         method: 'POST',
@@ -207,5 +208,32 @@ export const api = {
     markRead: (id) => request('POST', `/api/notifications/${id}/read`),
     markAllRead: () => request('POST', '/api/notifications/read-all'),
     comunicado: (data) => request('POST', '/api/notifications/comunicado', data),
+  },
+
+  onboarding: {
+    videos: () => request('GET', '/api/onboarding/videos'),
+    videoUrl: (id) => request('GET', `/api/onboarding/videos/${id}/url`),
+    concluir: (id) => request('POST', `/api/onboarding/videos/${id}/concluir`),
+    status: () => request('GET', '/api/onboarding/status'),
+    // admin
+    adminVideos: () => request('GET', '/api/onboarding/admin/videos'),
+    adminCreate: (formData) => {
+      return getToken().then(token =>
+        fetch(`${BASE_URL}/api/onboarding/admin/videos`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${token}` },
+          body: formData,
+        }).then(async res => {
+          if (!res.ok) {
+            const err = await res.json().catch(() => ({ detail: 'Erro desconhecido' }))
+            throw new Error(parseError(err))
+          }
+          return res.json()
+        })
+      )
+    },
+    adminUpdate: (id, data) => request('PUT', `/api/onboarding/admin/videos/${id}`, data),
+    adminDelete: (id) => request('DELETE', `/api/onboarding/admin/videos/${id}`),
+    adminReorder: (items) => request('POST', '/api/onboarding/admin/videos/reorder', items),
   },
 }

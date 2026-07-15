@@ -113,6 +113,8 @@ async def create_user(
         role=body.role,
         matricula=body.matricula,
         turno=body.turno,
+        must_change_password=True,   # primeiro acesso sempre exige troca de senha
+        onboarding_completed=False,  # precisa passar pelo onboarding
     )
     db.add(user)
     await db.commit()
