@@ -142,7 +142,10 @@ async def lifespan(app: FastAPI):
                 END IF;
             END$$;
         """))
-    storage.ensure_bucket()
+    try:
+        storage.ensure_bucket()
+    except Exception as e:
+        logger.warning("MinIO indisponível no startup (não crítico): %s", e)
     async with AsyncSessionLocal() as db:
         await seed_opcoes(db)
     asyncio.create_task(_timeout_job())

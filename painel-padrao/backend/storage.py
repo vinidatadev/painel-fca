@@ -2,6 +2,7 @@ import os
 import uuid
 import datetime
 import boto3
+from botocore.config import Config
 from botocore.exceptions import ClientError
 
 ENDPOINT   = os.getenv("MINIO_ENDPOINT", "minio:9000")
@@ -27,6 +28,7 @@ def _client():
         aws_access_key_id=ACCESS_KEY,
         aws_secret_access_key=SECRET_KEY,
         region_name="us-east-1",
+        config=Config(connect_timeout=5, read_timeout=10, retries={"max_attempts": 1}),
     )
 
 
