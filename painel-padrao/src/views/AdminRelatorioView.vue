@@ -19,11 +19,11 @@
     <table v-else class="rel-table card">
       <thead>
         <tr>
-          <th>Setor</th>
-          <th>Empresa</th>
-          <th>Tempo Médio (h)</th>
-          <th>% Dentro do SLA</th>
-          <th>Total Etapas</th>
+          <th>Setor Responsável</th>
+          <th>Empresa Responsável</th>
+          <th>Tempo Médio de Resposta (h)</th>
+          <th>% Etapas no Prazo (SLA)</th>
+          <th>Total de Etapas Tratadas</th>
         </tr>
       </thead>
       <tbody>

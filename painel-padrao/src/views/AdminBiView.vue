@@ -158,7 +158,7 @@
         </div>
         <div class="status-empresa-divider"></div>
         <div class="status-empresa-right">
-          <h3 class="chart-title">FCAs por Empresa</h3>
+          <h3 class="chart-title">FCAs por Empresa Causadora</h3>
           <div v-if="!empresaChartData.datasets[0]?.data.length" class="empty-state">Sem dados no período.</div>
           <div v-else class="doughnut-wrap">
             <Doughnut :data="empresaChartData" :options="doughnutOptions" />
@@ -226,21 +226,21 @@
 
       <!-- Grafico_Solucao -->
       <div class="card chart-card">
-        <h3 class="chart-title">Taxa de Solução por Área</h3>
+        <h3 class="chart-title">Taxa de Solução por Área Causadora</h3>
         <div v-if="!solucaoPorArea.length" class="empty-state">Nenhuma etapa concluída com avaliação no período.</div>
         <Bar v-else :data="solucaoChartData" :options="{ responsive: true, plugins: { legend: { display: true, position: 'top' } }, scales: { y: { beginAtZero: true } } }" />
       </div>
 
       <!-- Grafico_SLA -->
       <div class="card chart-card">
-        <h3 class="chart-title">SLA OK vs NOK por Setor</h3>
+        <h3 class="chart-title">SLA OK vs NOK por Setor Responsável</h3>
         <div v-if="!slaPorSetor.length" class="empty-state">Sem dados de SLA no período.</div>
         <Bar v-else :data="slaChartData" :options="slaStackedOptions" />
       </div>
 
       <!-- Grafico_Tempo -->
       <div class="card chart-card">
-        <h3 class="chart-title">Tempo Médio de Resolução (h)</h3>
+        <h3 class="chart-title">Tempo Médio de Resolução por Setor Responsável (h)</h3>
         <div v-if="!tempoMedioSetor.length" class="empty-state">Sem dados de tempo no período.</div>
         <Bar v-else :data="tempoChartData" :options="hBarOptions" />
       </div>
@@ -256,12 +256,12 @@
 
     <!-- Tabela_EmpresaCausa pivot -->
     <div class="card" style="overflow-x: auto; margin-bottom: var(--space-4)">
-      <h3 class="chart-title">Empresa × Causa</h3>
+      <h3 class="chart-title">Empresa Causadora × Causa</h3>
       <div v-if="!tabelaEmpresaCausa.length" class="empty-state">Nenhum dado para os filtros selecionados.</div>
       <table v-else class="pivot-table">
         <thead>
           <tr>
-            <th>Empresa</th>
+            <th>Empresa Causadora</th>
             <th v-for="causa in empresaCausaPivot.causas" :key="causa">{{ causa }}</th>
             <th>Total</th>
           </tr>
@@ -290,17 +290,17 @@
 
     <!-- Tabela_SetorEmpresaCausa ordenável + paginada -->
     <div class="card" style="overflow-x: auto; margin-bottom: var(--space-4)">
-      <h3 class="chart-title">Setor × Empresa × Causa</h3>
+      <h3 class="chart-title">Setor Solicitante × Empresa Solicitante × Causa</h3>
       <div v-if="!tabelaSetorEmpresaCausa.length" class="empty-state">Nenhum dado para os filtros selecionados.</div>
       <template v-else>
         <table class="data-table">
           <thead>
             <tr>
               <th class="sortable" @click="sortBy('setor')">
-                Setor <span>{{ sortColuna === 'setor' ? (sortAsc ? '↑' : '↓') : '' }}</span>
+                Setor Solicitante <span>{{ sortColuna === 'setor' ? (sortAsc ? '↑' : '↓') : '' }}</span>
               </th>
               <th class="sortable" @click="sortBy('empresa')">
-                Empresa <span>{{ sortColuna === 'empresa' ? (sortAsc ? '↑' : '↓') : '' }}</span>
+                Empresa Solicitante <span>{{ sortColuna === 'empresa' ? (sortAsc ? '↑' : '↓') : '' }}</span>
               </th>
               <th class="sortable" @click="sortBy('causa')">
                 Causa <span>{{ sortColuna === 'causa' ? (sortAsc ? '↑' : '↓') : '' }}</span>
