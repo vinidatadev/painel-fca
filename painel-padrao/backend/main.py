@@ -62,6 +62,49 @@ async def _processar_timeouts():
             await db.commit()
 
 
+async def _limpar_anexos_orfaos():
+    """Remove do MinIO arquivos sem referência no banco com mais de 2h."""
+    from sqlalchemy import select
+    from models import FCA, HelpTicket
+    from datetime import timedelta
+
+    try:
+        # Coleta todas as keys referenciadas no banco
+        async with AsyncSessionLocal() as db:
+            fca_urls = (await db.execute(select(FCA.anexo_urls).where(FCA.anexo_urls.isnot(None)))).scalars().all()
+            help_keys = (await db.execute(select(HelpTicket.anexo_keys).where(HelpTicket.anexo_keys.isnot(None)))).scalars().all()
+
+        referenced: set[str] = set()
+        for urls in fca_urls:
+            if urls:
+                referenced.update(urls)
+        for keys in help_keys:
+            if keys:
+                referenced.update(keys)
+
+        threshold = datetime.now(timezone.utc) - timedelta(hours=2)
+
+        def _sync_cleanup():
+            s3 = storage._client()
+            paginator = s3.get_paginator("list_objects_v2")
+            deleted = 0
+            for page in paginator.paginate(Bucket=storage.BUCKET):
+                for obj in page.get("Contents", []):
+                    key = obj["Key"]
+                    last_modified = obj["LastModified"]
+                    if key not in referenced and last_modified < threshold:
+                        storage.delete_file(key)
+                        deleted += 1
+            return deleted
+
+        loop = asyncio.get_event_loop()
+        deleted = await loop.run_in_executor(None, _sync_cleanup)
+        if deleted:
+            logger.info("Storage_Job: removidos %d arquivos órfãos", deleted)
+    except Exception as e:
+        logger.warning("Storage_Job erro: %s", e)
+
+
 async def _timeout_job():
     while True:
         try:
@@ -69,6 +112,19 @@ async def _timeout_job():
         except Exception as e:
             logger.error("Timeout_Job erro: %s", e)
         await asyncio.sleep(3600)
+
+
+async def _storage_cleanup_job():
+    await asyncio.sleep(3600)  # aguarda 1h antes da primeira execução
+    while True:
+        try:
+            await _limpar_anexos_orfaos()
+        except Exception as e:
+            logger.error("Storage_Job loop erro: %s", e)
+        await asyncio.sleep(3600)  # roda a cada 1h
+
+
+
 
 
 def _sql(s: str):
@@ -176,6 +232,7 @@ async def lifespan(app: FastAPI):
     async with AsyncSessionLocal() as db:
         await seed_opcoes(db)
     asyncio.create_task(_timeout_job())
+    asyncio.create_task(_storage_cleanup_job())
     yield
 
 
