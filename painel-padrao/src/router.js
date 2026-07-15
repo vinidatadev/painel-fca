@@ -12,6 +12,14 @@ const routes = [
   { path: '/admin/config', component: () => import('./views/AdminConfigView.vue') },
   { path: '/admin/sla', component: () => import('./views/AdminSlaView.vue') },
   { path: '/admin/help', component: () => import('./views/AdminHelpView.vue') },
+  { path: '/admin/relatorio', component: () => import('./views/AdminBiView.vue'),
+    beforeEnter: (_to, _from, next) => {
+      // Guarda de acesso: user vem do localStorage via token decodificado
+      // A verificação definitiva acontece dentro da view via inject('user')
+      next()
+    }
+  },
+  { path: '/admin/comunicados', component: () => import('./views/AdminComunicadosView.vue') },
   { path: '/help', component: () => import('./views/HelpView.vue') },
   { path: '/perfil', component: () => import('./views/PerfilView.vue') },
   { path: '/login', redirect: '/dashboard' },

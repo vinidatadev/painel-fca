@@ -10,6 +10,7 @@ from models import HelpTicket, HelpMensagem
 from auth import require_user
 from ws_manager import manager
 import storage
+import notif_helper
 
 router = APIRouter(prefix="/help", tags=["help"])
 any_user = require_user()
@@ -95,6 +96,8 @@ async def criar_ticket(
     await db.commit()
     await db.refresh(ticket)
     await manager.broadcast("help_ticket_novo", destinatarios=None)
+    await notif_helper.notif_help_novo(db, ticket)
+    await db.commit()
     return {"id": str(ticket.id)}
 
 
@@ -154,6 +157,8 @@ async def responder_ticket(
 
     await db.commit()
     await manager.broadcast("help_ticket_atualizado", destinatarios=None)
+    await notif_helper.notif_help_atualizado(db, t, user["name"], "Nova mensagem", uuid.UUID(user["user_id"]))
+    await db.commit()
     return {"ok": True}
 
 
@@ -171,6 +176,8 @@ async def atualizar_status(
     t.updated_at = datetime.now(timezone.utc)
     await db.commit()
     await manager.broadcast("help_ticket_atualizado", destinatarios=None)
+    await notif_helper.notif_help_atualizado(db, t, user["name"], f"Status alterado para {body.status}", uuid.UUID(user["user_id"]))
+    await db.commit()
     return {"ok": True}
 
 

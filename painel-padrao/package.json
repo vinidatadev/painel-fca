@@ -9,7 +9,9 @@
   },
   "dependencies": {
     "@azure/msal-browser": "^3.10.0",
+    "chart.js": "^4.5.1",
     "vue": "^3.4.0",
+    "vue-chartjs": "^5.3.4",
     "vue-router": "^4.3.0"
   },
   "devDependencies": {

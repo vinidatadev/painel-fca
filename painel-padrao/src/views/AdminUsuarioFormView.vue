@@ -152,11 +152,8 @@ async function submit() {
 </script>
 
 <style scoped>
-.loading-text { color: #888; padding: 1.5rem; text-align: center; }
-.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem 1.25rem; }
-.success-msg { color: #059669; font-size: .875rem; margin-top: .5rem; }
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3) var(--space-6); }
+.success-msg { color: var(--color-success-text); font-size: var(--font-size-sm); margin-top: var(--space-2); background: var(--color-success-bg); padding: var(--space-2) var(--space-3); border-radius: var(--radius-md); }
 
-@media (max-width: 600px) {
-  .form-grid { grid-template-columns: 1fr; }
-}
+@media (max-width: 600px) { .form-grid { grid-template-columns: 1fr; } }
 </style>

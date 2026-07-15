@@ -42,6 +42,7 @@ class MeResponse(BaseModel):
     notif_push: bool
     notif_som: str
     avatar_url: str | None
+    acesso_relatorio: bool
 
 
 @router.get("/me", response_model=MeResponse)
@@ -66,6 +67,7 @@ async def me(
         notif_push=user.notif_push,
         notif_som=user.notif_som if user.notif_som else "som1",
         avatar_url=user.avatar_url,
+        acesso_relatorio=user.acesso_relatorio,
     )
 
 
@@ -97,6 +99,7 @@ async def login(request: Request, body: LoginRequest, db: AsyncSession = Depends
             "sector": user.sector,
             "role": user.role,
             "avatar_url": user.avatar_url,
+            "acesso_relatorio": user.acesso_relatorio,
         }
     }
 

@@ -30,7 +30,7 @@
       <thead>
         <tr>
           <th>Nome</th><th>E-mail</th><th>Empresa</th><th>Setor</th>
-          <th>Papel</th><th>Matrícula</th><th>Turno</th><th>Status</th><th></th>
+          <th>Papel</th><th>Matrícula</th><th>Turno</th><th>Status</th><th>BI</th><th></th>
         </tr>
       </thead>
       <tbody>
@@ -50,6 +50,13 @@
           <td class="actions">
             <RouterLink :to="`/admin/usuarios/${u.id}`" class="btn btn-sm btn-outline">Editar</RouterLink>
             <button v-if="u.is_active" class="btn btn-sm btn-danger" @click="desativar(u)">Desativar</button>
+          </td>
+          <td>
+            <button
+              :class="['toggle-btn', u.acesso_relatorio ? 'toggle-on' : '']"
+              :title="u.acesso_relatorio ? 'Revogar acesso BI' : 'Conceder acesso BI'"
+              @click="toggleBiAccess(u)"
+            >{{ u.acesso_relatorio ? '✓' : '—' }}</button>
           </td>
         </tr>
       </tbody>
@@ -96,19 +103,46 @@ async function desativar(u) {
   }
 }
 
+async function toggleBiAccess(u) {
+  try {
+    const updated = await api.usuarios.patch(u.id, { acesso_relatorio: !u.acesso_relatorio })
+    u.acesso_relatorio = updated.acesso_relatorio
+  } catch (e) {
+    alert(e.message)
+  }
+}
+
 onMounted(load)
 </script>
 
 <style scoped>
-.filters-bar { display: flex; gap: .6rem; align-items: center; flex-wrap: wrap; margin-bottom: 1rem; padding: .75rem 1rem; }
-.filters-bar select { padding: .4rem .65rem; border: 1px solid #d1d5db; border-radius: 6px; font-size: .85rem; }
-.loading-text { color: #888; text-align: center; padding: 2rem; }
-.empty-state { color: #9ca3af; padding: 2rem; text-align: center; }
+.filters-bar { display: flex; gap: var(--space-2); align-items: center; flex-wrap: wrap; margin-bottom: var(--space-4); padding: var(--space-3) var(--space-4); }
+.filters-bar select {
+  padding: var(--space-2) var(--space-3); border: 1.5px solid var(--color-neutral-200);
+  border-radius: var(--radius-md); font-size: var(--font-size-sm); font-family: var(--font-family-base);
+  background: var(--color-neutral-50); outline: none; cursor: pointer;
+}
+.filters-bar select:focus { border-color: var(--color-primary-500); }
 
-.fca-table { width: 100%; border-collapse: collapse; font-size: .875rem; padding: 0; }
-.fca-table thead th { text-align: left; padding: .6rem 1rem; font-weight: 600; border-bottom: 2px solid #e5e7eb; color: #6b7280; font-size: .75rem; text-transform: uppercase; background: #f9fafb; }
-.fca-table tbody td { padding: .55rem 1rem; border-bottom: 1px solid #f3f4f6; }
+.fca-table { width: 100%; border-collapse: collapse; font-size: var(--font-size-sm); padding: 0; }
+.fca-table thead th {
+  text-align: left; padding: var(--space-2) var(--space-4); font-weight: var(--font-weight-semibold);
+  border-bottom: 2px solid var(--color-neutral-200); color: var(--color-neutral-500);
+  font-size: var(--font-size-xs); text-transform: uppercase; background: var(--color-neutral-50);
+}
+.fca-table tbody td { padding: var(--space-2) var(--space-4); border-bottom: 1px solid var(--color-neutral-100); vertical-align: middle; }
 .fca-table tbody tr.inactive td { opacity: .5; }
-.fca-table tbody tr:hover td { background: #f9fafb; }
-.actions { display: flex; gap: .4rem; }
+.fca-table tbody tr:hover td { background: var(--color-primary-50); }
+.actions { display: flex; gap: var(--space-2); }
+
+.toggle-btn {
+  padding: var(--space-1) var(--space-2); border-radius: var(--radius-md);
+  border: 1.5px solid var(--color-neutral-300); background: var(--color-neutral-50);
+  cursor: pointer; font-size: var(--font-size-sm); color: var(--color-neutral-500);
+  transition: all var(--transition-fast);
+}
+.toggle-btn.toggle-on {
+  background: var(--color-success-bg); border-color: var(--color-success);
+  color: var(--color-success-text); font-weight: var(--font-weight-semibold);
+}
 </style>

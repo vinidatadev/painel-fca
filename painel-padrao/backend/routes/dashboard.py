@@ -1,7 +1,8 @@
 import uuid
+from datetime import datetime, timezone
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, or_, and_
+from sqlalchemy import select, func, or_, and_, extract
 from sqlalchemy.orm import selectinload
 from database import get_db
 from models import FCA, FCAEtapa
@@ -108,4 +109,97 @@ async def dashboard(
             "aguardando_devolutiva": aguardando,
             "encerrados": encerrados,
         }
+    }
+
+
+@router.get("/metricas")
+async def dashboard_metricas(
+    agrupamento: str = "semana",
+    db: AsyncSession = Depends(get_db),
+    current: dict = Depends(any_user),
+):
+    """Retorna série temporal, ranking de áreas causadoras e contador de atrasados."""
+    now = datetime.now(timezone.utc)
+
+    # ── Base de visibilidade ──────────────────────────────────────────────────
+    def _apply_visibility(stmt):
+        if current["role"] != "admin":
+            return (
+                stmt.join(FCAEtapa, FCAEtapa.fca_id == FCA.id, isouter=True)
+                .where(
+                    or_(
+                        and_(
+                            FCA.setor_solicitante == current["sector"],
+                            FCA.empresa_solicitante == current["company"],
+                        ),
+                        and_(
+                            FCAEtapa.setor == current["sector"],
+                            FCAEtapa.empresa == current["company"],
+                        ),
+                    )
+                )
+                .distinct()
+            )
+        return stmt
+
+    # ── Série temporal ────────────────────────────────────────────────────────
+    if agrupamento == "mes":
+        trunc_fn = func.date_trunc("month", FCA.created_at)
+        fmt = "YYYY-MM"
+    else:
+        trunc_fn = func.date_trunc("week", FCA.created_at)
+        fmt = "IYYY-IW"
+
+    serie_stmt = _apply_visibility(
+        select(trunc_fn.label("periodo"), func.count(FCA.id.distinct()).label("total"))
+        .select_from(FCA)
+        .group_by("periodo")
+        .order_by("periodo")
+    )
+    serie_result = await db.execute(serie_stmt)
+    serie_temporal = [
+        {"periodo": row.periodo.isoformat() if hasattr(row.periodo, "isoformat") else str(row.periodo), "total": row.total}
+        for row in serie_result.all()
+    ]
+
+    # ── Ranking de áreas causadoras ───────────────────────────────────────────
+    ranking_stmt = _apply_visibility(
+        select(
+            FCA.area_causadora,
+            FCA.empresa_causadora,
+            func.count(FCA.id.distinct()).label("total"),
+        )
+        .select_from(FCA)
+        .group_by(FCA.area_causadora, FCA.empresa_causadora)
+        .order_by(func.count(FCA.id.distinct()).desc())
+        .limit(5)
+    )
+    ranking_result = await db.execute(ranking_stmt)
+    ranking_areas = [
+        {"area_causadora": row.area_causadora, "empresa_causadora": row.empresa_causadora, "total": row.total}
+        for row in ranking_result.all()
+    ]
+
+    # ── Atrasados ─────────────────────────────────────────────────────────────
+    atrasados_stmt = (
+        select(func.count(FCA.id.distinct()))
+        .select_from(FCA)
+        .join(FCAEtapa, FCAEtapa.fca_id == FCA.id)
+        .where(
+            FCAEtapa.status.in_(["pendente", "em_andamento"]),
+            FCAEtapa.sla_deadline < now,
+            FCA.status.notin_(["encerrado", "concluido"]),
+        )
+    )
+    if current["role"] != "admin":
+        atrasados_stmt = atrasados_stmt.where(
+            FCAEtapa.setor == current["sector"],
+            FCAEtapa.empresa == current["company"],
+        )
+    atrasados = (await db.execute(atrasados_stmt)).scalar() or 0
+
+    return {
+        "serie_temporal": serie_temporal,
+        "ranking_areas": ranking_areas,
+        "atrasados": atrasados,
     }

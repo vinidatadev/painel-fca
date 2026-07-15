@@ -183,7 +183,8 @@ def require_user(required_role: str | None = None):
             "role": user.role,
             "company": user.company,
             "sector": user.sector,
-            "provider": provider
+            "provider": provider,
+            "acesso_relatorio": user.acesso_relatorio,
         }
 
     return _dependency

@@ -199,28 +199,38 @@ onMounted(load)
 
 <style scoped>
 .info-box {
-  background: #eff6ff; border: 1px solid #bfdbfe; margin-bottom: 1rem;
-  display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; font-size: .875rem; color: #1d4ed8;
+  background: var(--color-info-bg); border: 1px solid var(--color-primary-300);
+  margin-bottom: var(--space-4); display: flex; align-items: center; gap: var(--space-2);
+  flex-wrap: wrap; font-size: var(--font-size-sm); color: var(--color-info-text);
 }
-.info-box p { width: 100%; margin-top: .25rem; color: #6b7280; font-size: .8rem; }
-.arrow { color: #93c5fd; font-size: 1rem; }
+.info-box p { width: 100%; margin-top: var(--space-1); color: var(--color-neutral-500); font-size: var(--font-size-xs); }
+.arrow { color: var(--color-primary-300); font-size: 1rem; }
 
-.sla-table { width: 100%; border-collapse: collapse; font-size: .875rem; padding: 0; }
-.sla-table thead th { text-align: left; padding: .6rem 1rem; font-weight: 600; border-bottom: 2px solid #e5e7eb; color: #6b7280; font-size: .75rem; text-transform: uppercase; background: #f9fafb; }
-.sla-table tbody td { padding: .6rem 1rem; border-bottom: 1px solid #f3f4f6; }
+.sla-table { width: 100%; border-collapse: collapse; font-size: var(--font-size-sm); padding: 0; }
+.sla-table thead th {
+  text-align: left; padding: var(--space-2) var(--space-4); font-weight: var(--font-weight-semibold);
+  border-bottom: 2px solid var(--color-neutral-200); color: var(--color-neutral-500);
+  font-size: var(--font-size-xs); text-transform: uppercase; background: var(--color-neutral-50);
+}
+.sla-table tbody td { padding: var(--space-3) var(--space-4); border-bottom: 1px solid var(--color-neutral-100); vertical-align: middle; }
 .sla-table tbody tr.inactive td { opacity: .5; }
-.sla-table tbody tr:hover td { background: #f9fafb; }
-.actions { display: flex; gap: .4rem; }
-.text-muted { color: #9ca3af; }
-.loading-text { color: #888; text-align: center; padding: 2rem; }
-.empty-state { color: #9ca3af; text-align: center; padding: 1.5rem; }
+.sla-table tbody tr:hover td { background: var(--color-primary-50); }
+.actions { display: flex; gap: var(--space-2); }
+.text-muted { color: var(--color-neutral-400); }
 
-.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 200; }
-.modal-box { background: #fff; border-radius: 12px; padding: 1.75rem 1.5rem; min-width: 380px; box-shadow: 0 8px 32px rgba(0,0,0,.15); }
-.modal-box h3 { font-size: 1rem; font-weight: 700; margin-bottom: 1rem; }
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.4); display: flex; align-items: center; justify-content: center; z-index: 500; padding: var(--space-4); }
+.modal-box {
+  background: #fff; border-radius: var(--radius-xl); padding: var(--space-6) var(--space-6);
+  min-width: 400px; box-shadow: var(--shadow-lg); border: 1px solid var(--color-neutral-100);
+}
+.modal-box h3 { font-size: var(--font-size-base); font-weight: var(--font-weight-bold); margin-bottom: var(--space-5); color: var(--color-neutral-900); }
 
-.prazo-row { display: flex; gap: .75rem; }
-.preview-prazo { background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px; padding: .4rem .75rem; font-size: .85rem; color: #065f46; margin-top: -.25rem; margin-bottom: .5rem; }
-.escopo-label { display: flex; flex-direction: column; gap: .25rem; margin-bottom: .75rem; font-size: .875rem; }
-.escopo-label label { font-size: .78rem; color: #9ca3af; font-weight: 600; text-transform: uppercase; }
+.prazo-row { display: flex; gap: var(--space-3); }
+.preview-prazo {
+  background: var(--color-success-bg); border: 1px solid #bbf7d0; border-radius: var(--radius-md);
+  padding: var(--space-2) var(--space-3); font-size: var(--font-size-sm); color: var(--color-success-text);
+  margin-top: calc(-1 * var(--space-1)); margin-bottom: var(--space-2);
+}
+.escopo-label { display: flex; flex-direction: column; gap: var(--space-1); margin-bottom: var(--space-3); font-size: var(--font-size-sm); }
+.escopo-label label { font-size: var(--font-size-xs); color: var(--color-neutral-400); font-weight: var(--font-weight-semibold); text-transform: uppercase; }
 </style>

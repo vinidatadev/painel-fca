@@ -55,6 +55,30 @@ async function uploadRequest(path, file) {
   return res.json()
 }
 
+async function downloadRequest(method, path) {
+  const token = await getToken()
+  const res = await fetch(`${BASE_URL}${path}`, {
+    method,
+    headers: { 'Authorization': `Bearer ${token}` },
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: 'Erro desconhecido' }))
+    throw new Error(parseError(err))
+  }
+  const blob = await res.blob()
+  const contentDisposition = res.headers.get('Content-Disposition') || ''
+  const match = contentDisposition.match(/filename=([^;]+)/)
+  const filename = match ? match[1] : 'export'
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
+}
+
 export const api = {
   auth: {
     me: () => request('GET', '/api/auth/me'),
@@ -93,10 +117,41 @@ export const api = {
     create: (data) => request('POST', '/api/fcas/', data),
     responder: (id, data) => request('POST', `/api/fcas/${id}/responder`, data),
     encerrar: (id) => request('POST', `/api/fcas/${id}/encerrar`),
+    export: (params = {}, format = 'xlsx') => {
+      const q = new URLSearchParams(Object.fromEntries(Object.entries(params).filter(([, v]) => v !== undefined && v !== null && v !== '')))
+      return downloadRequest('GET', `/api/fcas/export?format=${format}&${q}`)
+    },
+    comentarios: {
+      list: (id) => request('GET', `/api/fcas/${id}/comentarios`),
+      create: (id, texto) => request('POST', `/api/fcas/${id}/comentarios`, { texto }),
+    },
+    audit: (id) => request('GET', `/api/fcas/${id}/audit`),
+    reabrir: (id, setor, empresa) => request('POST', `/api/fcas/${id}/reabrir`, { setor, empresa }),
+    reatribuir: (id, setor, empresa, justificativa) => request('POST', `/api/fcas/${id}/reatribuir`, { setor, empresa, justificativa }),
+    cancelar: (id, motivo) => request('POST', `/api/fcas/${id}/cancelar`, { motivo }),
   },
 
   dashboard: {
     get: () => request('GET', '/api/dashboard/'),
+    metricas: (agrupamento = 'semana') => request('GET', `/api/dashboard/metricas?agrupamento=${agrupamento}`),
+  },
+
+  admin: {
+    relatorio: (params = {}) => {
+      const q = new URLSearchParams(Object.fromEntries(Object.entries(params).filter(([, v]) => v !== undefined && v !== null && v !== '')))
+      return request('GET', `/api/admin/relatorio?${q}`)
+    },
+  },
+
+  bi: {
+    fca: (params = {}) => {
+      const q = new URLSearchParams(
+        Object.fromEntries(
+          Object.entries(params).filter(([, v]) => v !== undefined && v !== null && v !== '')
+        )
+      )
+      return request('GET', `/api/bi/fca?${q}`)
+    }
   },
 
   usuarios: {
@@ -108,6 +163,7 @@ export const api = {
     create: (data) => request('POST', '/api/usuarios/', data),
     update: (id, data) => request('PUT', `/api/usuarios/${id}`, data),
     desativar: (id) => request('PATCH', `/api/usuarios/${id}/desativar`),
+    patch: (id, data) => request('PATCH', `/api/usuarios/${id}`, data),
   },
 
   upload: {
@@ -143,5 +199,13 @@ export const api = {
     create: (data) => request('POST', '/api/help/', data),
     responder: (id, texto) => request('POST', `/api/help/${id}/mensagens`, { texto }),
     status: (id, status) => request('PATCH', `/api/help/${id}/status`, { status }),
+  },
+
+  notifications: {
+    list: () => request('GET', '/api/notifications/'),
+    unreadCount: () => request('GET', '/api/notifications/unread-count'),
+    markRead: (id) => request('POST', `/api/notifications/${id}/read`),
+    markAllRead: () => request('POST', '/api/notifications/read-all'),
+    comunicado: (data) => request('POST', '/api/notifications/comunicado', data),
   },
 }

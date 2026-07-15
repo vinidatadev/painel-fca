@@ -25,6 +25,7 @@ class User(Base):
     notif_sms: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     notif_push: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     notif_som: Mapped[str] = mapped_column(String(10), default="som1", nullable=False)
+    acesso_relatorio: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
@@ -150,3 +151,83 @@ class HelpMensagem(Base):
 
     ticket: Mapped["HelpTicket"] = relationship("HelpTicket", back_populates="mensagens")
     autor: Mapped["User"] = relationship("User", foreign_keys=[autor_id])
+
+
+# ── Auditoria e Comentários Internos ─────────────────────────────────────────
+
+class AuditLog(Base):
+    """Registro imutável de ações realizadas sobre um FCA."""
+    __tablename__ = "audit_logs"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    fca_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("fcas.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    usuario_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    # criacao | resposta_etapa | encerramento | reabertura | timeout_encerramento | comentario | reatribuicao
+    acao: Mapped[str] = mapped_column(String(50), nullable=False)
+    detalhe: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True
+    )
+
+    fca: Mapped["FCA | None"] = relationship("FCA", foreign_keys=[fca_id])
+    usuario: Mapped["User | None"] = relationship("User", foreign_keys=[usuario_id])
+
+
+class ComentarioInterno(Base):
+    """Comentário/observação interna vinculada a um FCA."""
+    __tablename__ = "comentarios_internos"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    fca_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("fcas.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    autor_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
+    )
+    texto: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
+
+    fca: Mapped["FCA"] = relationship("FCA", foreign_keys=[fca_id])
+    autor: Mapped["User"] = relationship("User", foreign_keys=[autor_id])
+
+
+# ── Notificações ──────────────────────────────────────────────────────────────
+
+class Notificacao(Base):
+    """
+    Notificação persistida por usuário.
+
+    tipo:
+      - 'comunicado'  → criado pelo admin manualmente (nova funcionalidade, aviso, etc.)
+      - 'fca'         → atualização em um FCA (novo, resposta, comentário, encerramento)
+      - 'help'        → atualização em ticket de suporte (nova msg, mudança de status)
+
+    destino (como a notificação foi endereçada):
+      - 'todos'             → todos os usuários ativos
+      - 'setor'             → setor+empresa específicos
+      - 'usuario'           → usuário individual
+    """
+    __tablename__ = "notificacoes"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    # quem recebe esta linha de notificação
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    tipo: Mapped[str] = mapped_column(String(20), nullable=False)           # comunicado | fca | help
+    titulo: Mapped[str] = mapped_column(String(200), nullable=False)
+    mensagem: Mapped[str | None] = mapped_column(Text, nullable=True)
+    imagem_url: Mapped[str | None] = mapped_column(Text, nullable=True)     # apenas para comunicados
+    link_rota: Mapped[str | None] = mapped_column(String(300), nullable=True)  # ex: /fca/{id}
+    lida: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False, index=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True
+    )
+
+    user: Mapped["User"] = relationship("User", foreign_keys=[user_id])

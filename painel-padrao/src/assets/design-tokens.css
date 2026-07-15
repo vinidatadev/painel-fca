@@ -1,0 +1,99 @@
+/* ============================================================
+   FCA System — Design Tokens
+   CSS Custom Properties globais para todo o sistema
+   ============================================================ */
+
+:root {
+  /* ── Paleta Primária (azul-índigo) ── */
+  --color-primary-900: #1e3a8a;
+  --color-primary-700: #1e40af;
+  --color-primary-500: #3b82f6;
+  --color-primary-300: #93c5fd;
+  --color-primary-100: #dbeafe;
+  --color-primary-50:  #eff6ff;
+
+  /* ── Neutrals ── */
+  --color-neutral-50:  #f9fafb;
+  --color-neutral-100: #f3f4f6;
+  --color-neutral-200: #e5e7eb;
+  --color-neutral-300: #d1d5db;
+  --color-neutral-400: #9ca3af;
+  --color-neutral-500: #6b7280;
+  --color-neutral-600: #4b5563;
+  --color-neutral-700: #374151;
+  --color-neutral-800: #1f2937;
+  --color-neutral-900: #111827;
+
+  /* ── Semânticas ── */
+  --color-success:      #059669;
+  --color-success-bg:   #d1fae5;
+  --color-success-text: #065f46;
+
+  --color-warning:      #d97706;
+  --color-warning-bg:   #fef3c7;
+  --color-warning-text: #92400e;
+
+  --color-danger:       #dc2626;
+  --color-danger-bg:    #fee2e2;
+  --color-danger-text:  #991b1b;
+
+  --color-info:         #3b82f6;
+  --color-info-bg:      #dbeafe;
+  --color-info-text:    #1d4ed8;
+
+  --color-purple:       #7c3aed;
+  --color-purple-bg:    #ede9fe;
+  --color-purple-text:  #5b21b6;
+
+  /* ── Espaçamento (base-4) ── */
+  --space-1:  4px;
+  --space-2:  8px;
+  --space-3:  12px;
+  --space-4:  16px;
+  --space-5:  20px;
+  --space-6:  24px;
+  --space-7:  32px;
+  --space-8:  40px;
+  --space-9:  48px;
+  --space-10: 56px;
+  --space-11: 64px;
+  --space-12: 80px;
+
+  /* ── Border Radius ── */
+  --radius-sm:   4px;
+  --radius-md:   8px;
+  --radius-lg:   12px;
+  --radius-xl:   16px;
+  --radius-full: 9999px;
+
+  /* ── Sombras ── */
+  --shadow-sm:  0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.05);
+  --shadow-md:  0 4px 12px rgba(0,0,0,.10), 0 2px 6px rgba(0,0,0,.06);
+  --shadow-lg:  0 10px 30px rgba(0,0,0,.12), 0 4px 10px rgba(0,0,0,.08);
+  --shadow-inset: inset 0 2px 4px rgba(0,0,0,.06);
+
+  /* ── Tipografia ── */
+  --font-family-base: 'Inter', 'system-ui', '-apple-system', sans-serif;
+  --font-size-xs:   0.75rem;
+  --font-size-sm:   0.875rem;
+  --font-size-base: 1rem;
+  --font-size-lg:   1.125rem;
+  --font-size-xl:   1.25rem;
+  --font-size-2xl:  1.5rem;
+  --font-size-3xl:  1.875rem;
+
+  --font-weight-regular:  400;
+  --font-weight-medium:   500;
+  --font-weight-semibold: 600;
+  --font-weight-bold:     700;
+
+  /* ── Transições ── */
+  --transition-fast: 150ms ease;
+  --transition-base: 200ms ease;
+  --transition-slow: 300ms ease;
+
+  /* ── Sidebar ── */
+  --sidebar-width:           240px;
+  --sidebar-width-collapsed: 64px;
+  --topbar-height:           56px;
+}

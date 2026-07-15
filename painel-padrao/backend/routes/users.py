@@ -24,6 +24,7 @@ class UserOut(BaseModel):
     matricula: str | None
     turno: str | None
     is_active: bool
+    acesso_relatorio: bool
     created_at: str
 
     @classmethod
@@ -33,7 +34,9 @@ class UserOut(BaseModel):
             company=u.company, sector=u.sector, role=u.role,
             auth_provider=u.auth_provider,
             matricula=u.matricula, turno=u.turno,
-            is_active=u.is_active, created_at=u.created_at.isoformat()
+            is_active=u.is_active,
+            acesso_relatorio=u.acesso_relatorio,
+            created_at=u.created_at.isoformat()
         )
 
 
@@ -57,6 +60,10 @@ class UserUpdate(BaseModel):
     matricula: str | None = None
     turno: Literal["A", "B", "C", "D"] | None = None
     password: str | None = Field(default=None, min_length=8)
+
+
+class UserPatch(BaseModel):
+    acesso_relatorio: bool | None = None
 
 
 @router.get("/", response_model=list[UserOut])
@@ -159,6 +166,24 @@ async def update_user(
     if body.password is not None:
         user.password_hash = hash_password(body.password)
 
+    await db.commit()
+    await db.refresh(user)
+    return UserOut.from_orm(user)
+
+
+@router.patch("/{user_id}", response_model=UserOut)
+async def patch_user(
+    user_id: UUID,
+    body: UserPatch,
+    db: AsyncSession = Depends(get_db),
+    _: dict = Depends(admin_only),
+):
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuário não encontrado")
+    if body.acesso_relatorio is not None:
+        user.acesso_relatorio = body.acesso_relatorio
     await db.commit()
     await db.refresh(user)
     return UserOut.from_orm(user)

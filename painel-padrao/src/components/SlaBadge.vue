@@ -1,6 +1,7 @@
 <template>
-  <span :class="['sla-badge', atrasado ? 'sla-atrasado' : 'sla-ok']">
-    {{ atrasado ? '⚠ Atrasado ' : '⏱ Vence em ' }}{{ texto }}
+  <span :class="['sla-badge', atrasado ? 'sla-atrasado' : diffMs < 3600000 ? 'sla-warning' : 'sla-ok']">
+    <svg width="11" height="11" viewBox="0 0 11 11" fill="none" style="flex-shrink:0"><circle cx="5.5" cy="5.5" r="4.5" stroke="currentColor" stroke-width="1.2"/><path d="M5.5 3v2.5l1.5 1.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+    {{ atrasado ? 'Atrasado ' : 'Vence em ' }}{{ texto }}
   </span>
 </template>
 
@@ -33,12 +34,13 @@ const texto = computed(() => {
 
 <style scoped>
 .sla-badge {
-  display: inline-flex; align-items: center;
-  padding: .15rem .55rem; border-radius: 20px;
-  font-size: .72rem; font-weight: 600; white-space: nowrap;
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 3px var(--space-2); border-radius: var(--radius-full);
+  font-size: var(--font-size-xs); font-weight: var(--font-weight-semibold); white-space: nowrap;
 }
-.sla-ok { background: #dcfce7; color: #166534; }
-.sla-atrasado { background: #fee2e2; color: #991b1b; animation: pulse 2s infinite; }
+.sla-ok      { background: var(--color-success-bg); color: var(--color-success-text); }
+.sla-warning { background: var(--color-warning-bg); color: var(--color-warning-text); }
+.sla-atrasado { background: var(--color-danger-bg); color: var(--color-danger-text); animation: pulse 2s infinite; }
 
 @keyframes pulse {
   0%, 100% { opacity: 1; }
