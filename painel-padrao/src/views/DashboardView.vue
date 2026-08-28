@@ -116,7 +116,9 @@
             <tr>
               <th v-if="colunasVisiveis.includes('cod_fca')">Código</th>
               <th v-if="colunasVisiveis.includes('causa')">Causa</th>
+              <th v-if="colunasVisiveis.includes('subcausa')">Sub-Causa</th>
               <th v-if="colunasVisiveis.includes('area')">Área Causadora</th>
+              <th v-if="colunasVisiveis.includes('solicitante')">Setor Solicitante</th>
               <th v-if="colunasVisiveis.includes('uf')">UF da Remessa</th>
               <th v-if="colunasVisiveis.includes('remessas')">Remessa(s)</th>
               <th v-if="colunasVisiveis.includes('dts')">DT</th>
@@ -133,9 +135,14 @@
             <tr v-for="(fca, idx) in filaBuscaFiltrada" :key="fca.id" :style="`animation-delay:${idx * 30}ms`" class="fade-in-up">
               <td v-if="colunasVisiveis.includes('cod_fca')"><strong class="code-text">{{ fca.cod_fca }}</strong></td>
               <td v-if="colunasVisiveis.includes('causa')">{{ fca.causa }}</td>
+              <td v-if="colunasVisiveis.includes('subcausa')"><span class="muted-cell">{{ fca.subcausa || '—' }}</span></td>
               <td v-if="colunasVisiveis.includes('area')">
                 <span class="area-text">{{ fca.area_causadora }}</span>
                 <span class="empresa-text"> · {{ fca.empresa_causadora }}</span>
+              </td>
+              <td v-if="colunasVisiveis.includes('solicitante')">
+                <span class="area-text">{{ fca.setor_solicitante }}</span>
+                <span class="empresa-text"> · {{ fca.empresa_solicitante }}</span>
               </td>
               <td v-if="colunasVisiveis.includes('uf')"><span class="uf-badge">{{ fca.uf }}</span></td>
               <td v-if="colunasVisiveis.includes('remessas')"><span class="muted-cell">{{ fca.remessas?.length ? fca.remessas.join(', ') : '—' }}</span></td>
@@ -221,7 +228,9 @@ const showColunasMenu = ref(false)
 const COLUNAS = [
   { key: 'cod_fca', label: 'Código' },
   { key: 'causa', label: 'Causa' },
+  { key: 'subcausa', label: 'Sub-Causa' },
   { key: 'area', label: 'Área Causadora' },
+  { key: 'solicitante', label: 'Setor Solicitante' },
   { key: 'uf', label: 'UF da Remessa' },
   { key: 'remessas', label: 'Remessa(s)' },
   { key: 'dts', label: 'DT' },

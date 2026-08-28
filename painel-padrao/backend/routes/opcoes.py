@@ -11,29 +11,32 @@ from sqlalchemy import select, func
 from database import get_db
 from models import OpcaoLista
 from auth import require_user
-from business import CAUSAS, ACOES, UFS, COMPANIES, SECTORS_BY_COMPANY
+from business import CAUSAS, SUBCAUSAS, ACOES, UFS, COMPANIES, SECTORS_BY_COMPANY
 
 router = APIRouter(prefix="/opcoes", tags=["opcoes"])
 any_user  = require_user()
 admin_only = require_user(required_role="admin")
 
-TIPOS_VALIDOS = {"causa", "acao", "uf"}
+TIPOS_VALIDOS = {"causa", "subcausa", "acao", "uf"}
 
 
 # ── seed automático ──────────────────────────────────────────────────────────
 
 async def seed_opcoes(db: AsyncSession):
-    """Popula as tabelas na primeira inicialização."""
-    count = await db.execute(select(func.count()).select_from(OpcaoLista))
-    if count.scalar() > 0:
-        return
-    itens = (
-        [OpcaoLista(tipo="causa", valor=v, ordem=i) for i, v in enumerate(CAUSAS)] +
-        [OpcaoLista(tipo="acao",  valor=v, ordem=i) for i, v in enumerate(ACOES)]  +
-        [OpcaoLista(tipo="uf",    valor=v, ordem=i) for i, v in enumerate(UFS)]
-    )
-    db.add_all(itens)
-    await db.commit()
+    """Popula as listas na primeira inicialização (por tipo, seguro re-executar)."""
+    for tipo, valores in (
+        ("causa", CAUSAS),
+        ("subcausa", SUBCAUSAS),
+        ("acao", ACOES),
+        ("uf", UFS),
+    ):
+        count = await db.execute(
+            select(func.count()).select_from(OpcaoLista).where(OpcaoLista.tipo == tipo)
+        )
+        if count.scalar() > 0:
+            continue
+        db.add_all(OpcaoLista(tipo=tipo, valor=v, ordem=i) for i, v in enumerate(valores))
+        await db.commit()
 
 
 # ── Schemas ──────────────────────────────────────────────────────────────────
@@ -77,11 +80,13 @@ async def get_opcoes(db: AsyncSession = Depends(get_db), _: dict = Depends(any_u
     itens = result.scalars().all()
 
     causas = [o.valor for o in itens if o.tipo == "causa"]
+    subcausas = [o.valor for o in itens if o.tipo == "subcausa"]
     acoes  = [o.valor for o in itens if o.tipo == "acao"]
     ufs    = [o.valor for o in itens if o.tipo == "uf"]
 
     return {
         "causas": causas,
+        "subcausas": subcausas,
         "acoes":  acoes,
         "ufs":    ufs,
         "empresas": COMPANIES,

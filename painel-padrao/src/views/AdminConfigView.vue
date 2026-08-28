@@ -91,6 +91,7 @@ import { api } from '../api'
 
 const tabs = [
   { tipo: 'causa', label: 'Causas do FCA' },
+  { tipo: 'subcausa', label: 'Sub-Causas' },
   { tipo: 'acao',  label: 'Ações' },
   { tipo: 'uf',    label: 'UFs da Remessa' },
 ]
