@@ -4,19 +4,19 @@
 Sistema funcionando no servidor `<IP_SERVIDOR>` via Portainer com HTTPS (certificado autoassinado).
 
 ## Versões das Imagens Atuais
-- **Frontend**: `frontend-app:v10` (campos DT/Cod Material/Ordem de Venda + dashboard com colunas personalizáveis)
-- **Backend**: `backend-app:v6` (campos extras no FCA + preferências de usuário)
+- **Frontend**: `frontend-app:v11` (Apontar Causa restrito ao setor inicial, status renomeados, botão Tratar/Acompanhar dinâmico)
+- **Backend**: `backend-app:v7` (Apontar Causa + sub-setor causador + preferências de usuário)
 
 ## Estrutura no Portainer
 ### Containers
 - **frontend** — nginx com Vue.js buildado
   - Porta: `3003:443` (HTTPS) e `3080:80` (redirect HTTP→HTTPS)
-  - Imagem: `frontend-app:v10`
+  - Imagem: `frontend-app:v11`
   - Rede: `app-network`
 
 - **backend** — FastAPI Python
   - Porta: `8003:8000` (interno, não exposto)
-  - Imagem: `backend-app:v6`
+  - Imagem: `backend-app:v7`
   - Rede: `app-network`
   - ENVs importantes (OBRIGATÓRIAS — o backend falha no startup se faltarem):
     - `JWT_SECRET`: segredo forte (mín. 16 chars, ex.: 64 hex)
@@ -56,25 +56,25 @@ docker build `
   --build-arg VITE_AZURE_TENANT_ID=4f8fb8aa-7c76-4c81-82f5-24608f5a0b02 `
   --build-arg VITE_AZURE_REDIRECT_URI=https://<IP_SERVIDOR>:3003 `
   --build-arg VITE_API_URL="" `
-  -t frontend-app:v10 .
+  -t frontend-app:v11 .
 
-docker save frontend-app:v10 -o frontend-v10.tar
+docker save frontend-app:v11 -o frontend-v11.tar
 ```
 
 ### 2. Backend
 ```powershell
 cd painel-padrao\backend
 
-docker build -t backend-app:v6 .
+docker build -t backend-app:v7 .
 
-docker save backend-app:v6 -o backend-v6.tar
+docker save backend-app:v7 -o backend-v7.tar
 ```
 
 ### 3. Upload no Portainer
-1. **Images → Import** → importar `frontend-v10.tar` e `backend-v6.tar`.
-2. **Containers → backend** → imagem para `backend-app:v6` e conferir/definir as
+1. **Images → Import** → importar `frontend-v11.tar` e `backend-v7.tar`.
+2. **Containers → backend** → imagem para `backend-app:v7` e conferir/definir as
    **ENVs obrigatórias** (ver lista na seção "Estrutura no Portainer").
-3. **Containers → frontend** → imagem para `frontend-app:v10`.
+3. **Containers → frontend** → imagem para `frontend-app:v11`.
 4. Recreate/Reapply em ambos os containers.
 
 ### 4. Checklist de segurança (a cada deploy)
