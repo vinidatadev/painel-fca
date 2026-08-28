@@ -42,7 +42,12 @@ Sistema funcionando no servidor `<IP_SERVIDOR>` via Portainer com HTTPS (certifi
 
 ## Como Rebuildar as Imagens
 
-### Frontend
+> **Segurança:** as imagens agora usam `.dockerignore` e **não embutem `.env`**
+> nem arquivos de credenciais. Todas as variáveis sensíveis são definidas
+> **somente** nas ENVs do container no Portainer. Assim o `.tar` pode ser
+> compartilhado/armazenado sem vazar segredos.
+
+### 1. Frontend
 ```powershell
 cd painel-padrao
 
@@ -56,7 +61,7 @@ docker build `
 docker save frontend-app:v9 -o frontend-v9.tar
 ```
 
-### Backend
+### 2. Backend
 ```powershell
 cd painel-padrao\backend
 
@@ -65,7 +70,17 @@ docker build -t backend-app:v5 .
 docker save backend-app:v5 -o backend-v5.tar
 ```
 
-Depois importar os `.tar` no Portainer via **Images → Import** e atualizar os containers.
+### 3. Upload no Portainer
+1. **Images → Import** → importar `frontend-v9.tar` e `backend-v5.tar`.
+2. **Containers → backend** → imagem para `backend-app:v5` e conferir/definir as
+   **ENVs obrigatórias** (ver lista na seção "Estrutura no Portainer").
+3. **Containers → frontend** → imagem para `frontend-app:v9`.
+4. Recreate/Reapply em ambos os containers.
+
+### 4. Checklist de segurança (a cada deploy)
+- [ ] Confirmar `JWT_SECRET`, `AZURE_*`, `MINIO_*`, `DATABASE_URL`, `ALLOWED_ORIGINS` no container backend
+- [ ] Não commitar/exportar `.env`, `certs/`, `*.tar` no repositório
+- [ ] Verificar logs do backend após o start (deve subir healthy)
 
 ## Funcionalidades Implementadas
 ✅ Login local (email/senha)  
@@ -90,8 +105,9 @@ Depois importar os `.tar` no Portainer via **Images → Import** e atualizar os 
 - [ ] Monitoramento com logs centralizados
 
 ## Arquivos Importantes
-- `nginx.https.conf` — Configuração nginx com HTTPS e proxy
-- `certs/nginx.crt` e `certs/nginx.key` — Certificado autoassinado
+- `nginx.https.conf` — Configuração nginx com HTTPS e proxy (⚠️ **não versionado** no git — contém IP do servidor; mantê-lo apenas no ambiente de deploy)
+- `certs/nginx.crt` e `certs/nginx.key` — Certificado autoassinado (⚠️ **não versionados**)
+- `.env` (raiz e `backend/`) — Segredos locais (⚠️ **nunca commitados** — protegidos por `.gitignore`)
 - `src/api.js` — Cliente API (usa URLs relativas para proxy)
 - `backend/auth.py` — Autenticação JWT local + Azure AD
 - `backend/routes/` — Endpoints da API
