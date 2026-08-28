@@ -190,7 +190,15 @@ async def lifespan(app: FastAPI):
             "ALTER TABLE fcas ADD COLUMN IF NOT EXISTS ordens_venda BIGINT[]"
         ))
         await conn.execute(_sql(
-            "ALTER TABLE fcas ADD COLUMN IF NOT EXISTS subcausa VARCHAR(100)"
+            "ALTER TABLE fcas ADD COLUMN IF NOT EXISTS subsetor_causador VARCHAR(100)"
+        ))
+        # Correção: a coluna subcausa (nome errado) pode ter sido criada em algum
+        # banco — remove para manter consistência.
+        await conn.execute(_sql(
+            "ALTER TABLE fcas DROP COLUMN IF EXISTS subcausa"
+        ))
+        await conn.execute(_sql(
+            "DELETE FROM opcoes_lista WHERE tipo = 'subcausa'"
         ))
         await conn.execute(_sql(
             "CREATE INDEX IF NOT EXISTS ix_audit_logs_fca_id ON audit_logs(fca_id)"

@@ -29,7 +29,7 @@
           <div class="detail-item"><span class="detail-label">Setor Solicitante</span><span class="detail-value">{{ fca.setor_solicitante }} · {{ fca.empresa_solicitante }}</span></div>
           <div class="detail-item"><span class="detail-label">Área Causadora</span><span class="detail-value">{{ fca.area_causadora }} · {{ fca.empresa_causadora }}</span></div>
           <div class="detail-item"><span class="detail-label">Causa</span><span class="detail-value">{{ fca.causa }}</span></div>
-          <div class="detail-item"><span class="detail-label">Sub-Causa</span><span class="detail-value">{{ fca.subcausa || '—' }}</span></div>
+          <div class="detail-item"><span class="detail-label">Sub-Setor Causador</span><span class="detail-value">{{ fca.subsetor_causador || '—' }}</span></div>
           <div class="detail-item"><span class="detail-label">Ação</span><span class="detail-value">{{ fca.acao }}</span></div>
           <div class="detail-item"><span class="detail-label">UF da Remessa</span><span class="detail-value"><span class="uf-badge">{{ fca.uf }}</span></span></div>
           <div class="detail-item">

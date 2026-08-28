@@ -67,7 +67,7 @@ class FCA(Base):
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     cod_fca: Mapped[str] = mapped_column(String(20), unique=True, nullable=False, index=True)
     causa: Mapped[str] = mapped_column(String(100), nullable=False)
-    subcausa: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    subsetor_causador: Mapped[str | None] = mapped_column(String(100), nullable=True)
     acao: Mapped[str] = mapped_column(String(150), nullable=False)
     uf: Mapped[str] = mapped_column(String(2), nullable=False)
     numero_remessa: Mapped[int | None] = mapped_column(BigInteger, nullable=True)  # mantido por compatibilidade

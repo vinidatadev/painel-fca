@@ -11,22 +11,22 @@ from sqlalchemy import select, func
 from database import get_db
 from models import OpcaoLista
 from auth import require_user
-from business import CAUSAS, SUBCAUSAS, ACOES, UFS, COMPANIES, SECTORS_BY_COMPANY
+from business import CAUSAS, ACOES, UFS, COMPANIES, SECTORS_BY_COMPANY
 
 router = APIRouter(prefix="/opcoes", tags=["opcoes"])
 any_user  = require_user()
 admin_only = require_user(required_role="admin")
 
-TIPOS_VALIDOS = {"causa", "subcausa", "acao", "uf"}
+TIPOS_VALIDOS = {"causa", "subsetor_causador", "acao", "uf"}
 
 
 # ── seed automático ──────────────────────────────────────────────────────────
 
 async def seed_opcoes(db: AsyncSession):
     """Popula as listas na primeira inicialização (por tipo, seguro re-executar)."""
+    # Lista de subsetor_causador começa vazia — o admin cadastra as opções na tela.
     for tipo, valores in (
         ("causa", CAUSAS),
-        ("subcausa", SUBCAUSAS),
         ("acao", ACOES),
         ("uf", UFS),
     ):
@@ -80,13 +80,13 @@ async def get_opcoes(db: AsyncSession = Depends(get_db), _: dict = Depends(any_u
     itens = result.scalars().all()
 
     causas = [o.valor for o in itens if o.tipo == "causa"]
-    subcausas = [o.valor for o in itens if o.tipo == "subcausa"]
+    subsetores = [o.valor for o in itens if o.tipo == "subsetor_causador"]
     acoes  = [o.valor for o in itens if o.tipo == "acao"]
     ufs    = [o.valor for o in itens if o.tipo == "uf"]
 
     return {
         "causas": causas,
-        "subcausas": subcausas,
+        "subsetores_causadores": subsetores,
         "acoes":  acoes,
         "ufs":    ufs,
         "empresas": COMPANIES,

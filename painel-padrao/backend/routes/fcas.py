@@ -107,7 +107,7 @@ class FCAListItem(BaseModel):
     id: str
     cod_fca: str
     causa: str
-    subcausa: str | None
+    subsetor_causador: str | None
     area_causadora: str
     empresa_causadora: str
     setor_solicitante: str
@@ -128,7 +128,7 @@ class FCAListItem(BaseModel):
             id=str(fca.id),
             cod_fca=fca.cod_fca,
             causa=fca.causa,
-            subcausa=fca.subcausa,
+            subsetor_causador=fca.subsetor_causador,
             area_causadora=fca.area_causadora,
             empresa_causadora=fca.empresa_causadora,
             setor_solicitante=fca.setor_solicitante,
@@ -152,7 +152,7 @@ class FCADetail(BaseModel):
     id: str
     cod_fca: str
     causa: str
-    subcausa: str | None
+    subsetor_causador: str | None
     acao: str
     uf: str
     numero_remessa: int | None
@@ -178,7 +178,7 @@ class FCADetail(BaseModel):
             id=str(fca.id),
             cod_fca=fca.cod_fca,
             causa=fca.causa,
-            subcausa=fca.subcausa,
+            subsetor_causador=fca.subsetor_causador,
             acao=fca.acao,
             uf=fca.uf,
             numero_remessa=fca.numero_remessa,
@@ -202,7 +202,7 @@ class FCADetail(BaseModel):
 
 class FCACreate(BaseModel):
     causa: str
-    subcausa: str | None = None
+    subsetor_causador: str | None = None
     area_causadora: str
     empresa_causadora: str
     acao: str
@@ -369,7 +369,7 @@ async def export_fcas(
         )
 
     headers_cols = [
-        "cod_fca", "causa", "subcausa", "acao", "UF da Remessa", "remessas",
+        "cod_fca", "causa", "subsetor_causador", "acao", "UF da Remessa", "remessas",
         "DT", "Cod Material", "Ordem de Venda",
         "setor_solicitante", "empresa_solicitante",
         "area_causadora", "empresa_causadora",
@@ -381,7 +381,7 @@ async def export_fcas(
         return [
             fca.cod_fca,
             fca.causa,
-            fca.subcausa or "",
+            fca.subsetor_causador or "",
             fca.acao,
             fca.uf,
             ",".join(str(r) for r in (fca.remessas or [])),
@@ -470,7 +470,7 @@ async def create_fca(
     fca = FCA(
         cod_fca=cod_fca,
         causa=body.causa,
-        subcausa=body.subcausa,
+        subsetor_causador=body.subsetor_causador,
         acao=body.acao,
         uf=body.uf,
         numero_remessa=body.remessas[0] if body.remessas else body.numero_remessa,

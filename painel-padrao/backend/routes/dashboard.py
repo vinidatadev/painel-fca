@@ -60,7 +60,7 @@ async def dashboard(
             "id": str(fca.id),
             "cod_fca": fca.cod_fca,
             "causa": fca.causa,
-            "subcausa": fca.subcausa,
+            "subsetor_causador": fca.subsetor_causador,
             "area_causadora": fca.area_causadora,
             "empresa_causadora": fca.empresa_causadora,
             "setor_solicitante": fca.setor_solicitante,

@@ -27,15 +27,6 @@ CAUSAS = [
     "Divergência de peso",
 ]
 
-SUBCAUSAS = [
-    "Falha no fornecedor",
-    "Falha de processo interno",
-    "Falha de equipamento",
-    "Erro de operação",
-    "Embalagem danificada",
-    "Divergência de documentação",
-]
-
 ACOES = [
     "Ajustar a carga",
     "Analisar e atuar junto com comercial",

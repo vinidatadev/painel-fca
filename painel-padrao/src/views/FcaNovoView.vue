@@ -44,10 +44,10 @@
               </select>
             </div>
             <div class="form-group">
-              <label>Sub-Causa</label>
-              <select v-model="form.subcausa">
-                <option value="">Nenhuma</option>
-                <option v-for="s in opcoes.subcausas" :key="s" :value="s">{{ s }}</option>
+              <label>Sub-Setor Causador</label>
+              <select v-model="form.subsetor_causador">
+                <option value="">Nenhum</option>
+                <option v-for="s in opcoes.subsetores_causadores" :key="s" :value="s">{{ s }}</option>
               </select>
             </div>
             <div class="form-group">
@@ -264,7 +264,7 @@ import { api } from '../api'
 const router = useRouter()
 const user = inject('user')
 
-const opcoes = ref({ causas: [], subcausas: [], acoes: [], ufs: [], empresas: [], setores_por_empresa: {} })
+const opcoes = ref({ causas: [], subsetores_causadores: [], acoes: [], ufs: [], empresas: [], setores_por_empresa: {} })
 const loadingOpcoes = ref(true)
 const submitting = ref(false)
 const error = ref('')
@@ -273,7 +273,7 @@ const fileInput = ref(null)
 const pendingFiles = ref([])
 const isUploading = computed(() => pendingFiles.value.some(f => f.uploading))
 
-const form = ref({ causa: '', subcausa: '', area_causadora: '', empresa_causadora: '', acao: '', uf: '', remessas: [null], dts: [null], cod_materiais: [null], ordens_venda: [null], detalhe: '' })
+const form = ref({ causa: '', subsetor_causador: '', area_causadora: '', empresa_causadora: '', acao: '', uf: '', remessas: [null], dts: [null], cod_materiais: [null], ordens_venda: [null], detalhe: '' })
 
 function addItem(field) { form.value[field].push(null) }
 function removeItem(field, i) { form.value[field].splice(i, 1) }
