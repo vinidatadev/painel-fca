@@ -95,7 +95,7 @@
         <table class="fca-table">
           <thead>
             <tr>
-              <th>Código</th><th>Causa</th><th>Área Causadora</th><th>UF</th><th>Status</th><th>SLA</th><th></th>
+              <th>Código</th><th>Causa</th><th>Área Causadora</th><th>UF da Remessa</th><th>Status</th><th>SLA</th><th></th>
             </tr>
           </thead>
           <tbody>

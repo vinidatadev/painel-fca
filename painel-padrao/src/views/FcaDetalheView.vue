@@ -30,10 +30,22 @@
           <div class="detail-item"><span class="detail-label">Área Causadora</span><span class="detail-value">{{ fca.area_causadora }} · {{ fca.empresa_causadora }}</span></div>
           <div class="detail-item"><span class="detail-label">Causa</span><span class="detail-value">{{ fca.causa }}</span></div>
           <div class="detail-item"><span class="detail-label">Ação</span><span class="detail-value">{{ fca.acao }}</span></div>
-          <div class="detail-item"><span class="detail-label">UF</span><span class="detail-value"><span class="uf-badge">{{ fca.uf }}</span></span></div>
+          <div class="detail-item"><span class="detail-label">UF da Remessa</span><span class="detail-value"><span class="uf-badge">{{ fca.uf }}</span></span></div>
           <div class="detail-item">
             <span class="detail-label">Remessa(s)</span>
             <span class="detail-value">{{ fca.remessas?.length ? fca.remessas.join(', ') : fca.numero_remessa || '—' }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">DT</span>
+            <span class="detail-value">{{ fca.dts?.length ? fca.dts.join(', ') : '—' }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Cod Material</span>
+            <span class="detail-value">{{ fca.cod_materiais?.length ? fca.cod_materiais.join(', ') : '—' }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Ordem de Venda</span>
+            <span class="detail-value">{{ fca.ordens_venda?.length ? fca.ordens_venda.join(', ') : '—' }}</span>
           </div>
         </div>
         <div v-if="fca.detalhe" class="detalhe-obs">

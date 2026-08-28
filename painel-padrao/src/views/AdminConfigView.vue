@@ -92,7 +92,7 @@ import { api } from '../api'
 const tabs = [
   { tipo: 'causa', label: 'Causas do FCA' },
   { tipo: 'acao',  label: 'Ações' },
-  { tipo: 'uf',    label: 'UFs' },
+  { tipo: 'uf',    label: 'UFs da Remessa' },
 ]
 
 const tipoAtivo  = ref('causa')

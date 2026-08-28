@@ -39,7 +39,7 @@
           </select>
         </div>
         <div class="filter-group">
-          <label>UF</label>
+          <label>UF da Remessa</label>
           <select v-model="filtros.uf">
             <option value="">Todas</option>
             <option v-for="u in UFS" :key="u" :value="u">{{ u }}</option>
@@ -199,7 +199,7 @@
 
       <!-- Grafico_UF -->
       <div class="card chart-card">
-        <h3 class="chart-title">FCAs por UF</h3>
+        <h3 class="chart-title">FCAs por UF da Remessa</h3>
         <div v-if="!porUf.length" class="empty-state">Sem FCAs por UF no período.</div>
         <template v-else>
           <table class="uf-table">

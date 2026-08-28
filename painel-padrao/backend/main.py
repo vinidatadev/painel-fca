@@ -179,6 +179,16 @@ async def lifespan(app: FastAPI):
         await conn.execute(_sql(
             "UPDATE fcas SET anexo_urls = ARRAY[anexo_url] WHERE anexo_url IS NOT NULL AND anexo_urls IS NULL"
         ))
+        # Campos extras de remessa: DT, Cod Material, Ordem de Venda (múltiplos)
+        await conn.execute(_sql(
+            "ALTER TABLE fcas ADD COLUMN IF NOT EXISTS dts BIGINT[]"
+        ))
+        await conn.execute(_sql(
+            "ALTER TABLE fcas ADD COLUMN IF NOT EXISTS cod_materiais BIGINT[]"
+        ))
+        await conn.execute(_sql(
+            "ALTER TABLE fcas ADD COLUMN IF NOT EXISTS ordens_venda BIGINT[]"
+        ))
         await conn.execute(_sql(
             "CREATE INDEX IF NOT EXISTS ix_audit_logs_fca_id ON audit_logs(fca_id)"
         ))

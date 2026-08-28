@@ -71,6 +71,9 @@ class FCA(Base):
     uf: Mapped[str] = mapped_column(String(2), nullable=False)
     numero_remessa: Mapped[int | None] = mapped_column(BigInteger, nullable=True)  # mantido por compatibilidade
     remessas: Mapped[list[int] | None] = mapped_column(ARRAY(BigInteger), nullable=True)
+    dts: Mapped[list[int] | None] = mapped_column(ARRAY(BigInteger), nullable=True)
+    cod_materiais: Mapped[list[int] | None] = mapped_column(ARRAY(BigInteger), nullable=True)
+    ordens_venda: Mapped[list[int] | None] = mapped_column(ARRAY(BigInteger), nullable=True)
     detalhe: Mapped[str | None] = mapped_column(Text, nullable=True)
     anexo_url: Mapped[str | None] = mapped_column(Text, nullable=True)
     anexo_urls: Mapped[list[str] | None] = mapped_column(ARRAY(Text), nullable=True)  # múltiplos anexos

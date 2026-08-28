@@ -114,6 +114,9 @@ class FCAListItem(BaseModel):
     uf: str
     numero_remessa: int | None
     remessas: list[int]
+    dts: list[int]
+    cod_materiais: list[int]
+    ordens_venda: list[int]
     status: str
     etapa_atual: dict | None
     created_at: str
@@ -131,6 +134,9 @@ class FCAListItem(BaseModel):
             uf=fca.uf,
             numero_remessa=fca.numero_remessa,
             remessas=fca.remessas or [],
+            dts=fca.dts or [],
+            cod_materiais=fca.cod_materiais or [],
+            ordens_venda=fca.ordens_venda or [],
             status=fca.status,
             etapa_atual=(
                 {"setor": etapa.setor, "empresa": etapa.empresa, "order_index": etapa.order_index}
@@ -148,6 +154,9 @@ class FCADetail(BaseModel):
     uf: str
     numero_remessa: int | None
     remessas: list[int]
+    dts: list[int]
+    cod_materiais: list[int]
+    ordens_venda: list[int]
     detalhe: str | None
     anexo_url: str | None
     anexo_urls: list[str]
@@ -170,6 +179,9 @@ class FCADetail(BaseModel):
             uf=fca.uf,
             numero_remessa=fca.numero_remessa,
             remessas=fca.remessas or [],
+            dts=fca.dts or [],
+            cod_materiais=fca.cod_materiais or [],
+            ordens_venda=fca.ordens_venda or [],
             detalhe=fca.detalhe,
             anexo_url=fca.anexo_url,
             anexo_urls=fca.anexo_urls or ([fca.anexo_url] if fca.anexo_url else []),
@@ -192,6 +204,9 @@ class FCACreate(BaseModel):
     uf: str
     numero_remessa: int | None = None
     remessas: list[int] = []
+    dts: list[int] = []
+    cod_materiais: list[int] = []
+    ordens_venda: list[int] = []
     detalhe: str | None = None
     anexo_url: str | None = None          # legado, mantido por compatibilidade
     anexo_urls: list[str] = []            # nova forma: múltiplos anexos
@@ -349,7 +364,8 @@ async def export_fcas(
         )
 
     headers_cols = [
-        "cod_fca", "causa", "acao", "uf", "remessas",
+        "cod_fca", "causa", "acao", "UF da Remessa", "remessas",
+        "DT", "Cod Material", "Ordem de Venda",
         "setor_solicitante", "empresa_solicitante",
         "area_causadora", "empresa_causadora",
         "status", "created_at", "etapa_atual_setor", "etapa_atual_empresa",
@@ -363,6 +379,9 @@ async def export_fcas(
             fca.acao,
             fca.uf,
             ",".join(str(r) for r in (fca.remessas or [])),
+            ",".join(str(r) for r in (fca.dts or [])),
+            ",".join(str(r) for r in (fca.cod_materiais or [])),
+            ",".join(str(r) for r in (fca.ordens_venda or [])),
             fca.setor_solicitante,
             fca.empresa_solicitante,
             fca.area_causadora,
@@ -449,6 +468,9 @@ async def create_fca(
         uf=body.uf,
         numero_remessa=body.remessas[0] if body.remessas else body.numero_remessa,
         remessas=body.remessas if body.remessas else ([body.numero_remessa] if body.numero_remessa else []),
+        dts=body.dts or None,
+        cod_materiais=body.cod_materiais or None,
+        ordens_venda=body.ordens_venda or None,
         detalhe=body.detalhe,
         anexo_url=body.anexo_urls[0] if body.anexo_urls else body.anexo_url,
         anexo_urls=body.anexo_urls if body.anexo_urls else ([body.anexo_url] if body.anexo_url else None),

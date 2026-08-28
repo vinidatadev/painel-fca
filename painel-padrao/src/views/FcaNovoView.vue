@@ -77,7 +77,7 @@
               </select>
             </div>
             <div class="form-group">
-              <label>UF <span class="req">*</span></label>
+              <label>UF da Remessa <span class="req">*</span></label>
               <select v-model="form.uf" required>
                 <option value="">Selecione...</option>
                 <option v-for="u in opcoes.ufs" :key="u" :value="u">{{ u }}</option>
@@ -94,20 +94,78 @@
             <span class="form-section-num">3</span>
             <h3 class="form-section-title">Remessas</h3>
           </div>
-          <div class="remessas-list">
-            <div v-for="(_, i) in form.remessas" :key="i" class="remessa-row">
-              <div class="form-group" style="flex:1">
-                <label v-if="i === 0">Número(s) da Remessa</label>
-                <input v-model.number="form.remessas[i]" type="number" placeholder="Ex: 83139570" />
+          <div class="multi-fields">
+            <div class="multi-field">
+              <div class="remessas-list">
+                <div v-for="(_, i) in form.remessas" :key="'rem' + i" class="remessa-row">
+                  <div class="form-group" style="flex:1">
+                    <label v-if="i === 0">Número(s) da Remessa</label>
+                    <input v-model.number="form.remessas[i]" type="number" placeholder="Ex: 83139570" />
+                  </div>
+                  <button v-if="form.remessas.length > 1" type="button" class="btn btn-secondary btn-sm remessa-remove" @click="removeItem('remessas', i)" style="margin-top:auto">
+                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                  </button>
+                </div>
+                <button type="button" class="btn btn-ghost btn-sm add-remessa-btn" @click="addItem('remessas')">
+                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 2v8M2 6h8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                  Adicionar remessa
+                </button>
               </div>
-              <button v-if="form.remessas.length > 1" type="button" class="btn btn-secondary btn-sm remessa-remove" @click="removeRemessa(i)" style="margin-top:auto">
-                <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
-              </button>
             </div>
-            <button type="button" class="btn btn-ghost btn-sm add-remessa-btn" @click="addRemessa">
-              <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 2v8M2 6h8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
-              Adicionar remessa
-            </button>
+
+            <div class="multi-field">
+              <div class="remessas-list">
+                <div v-for="(_, i) in form.dts" :key="'dt' + i" class="remessa-row">
+                  <div class="form-group" style="flex:1">
+                    <label v-if="i === 0">DT</label>
+                    <input v-model.number="form.dts[i]" type="number" placeholder="Ex: 1204" />
+                  </div>
+                  <button v-if="form.dts.length > 1" type="button" class="btn btn-secondary btn-sm remessa-remove" @click="removeItem('dts', i)" style="margin-top:auto">
+                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                  </button>
+                </div>
+                <button type="button" class="btn btn-ghost btn-sm add-remessa-btn" @click="addItem('dts')">
+                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 2v8M2 6h8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                  Adicionar DT
+                </button>
+              </div>
+            </div>
+
+            <div class="multi-field">
+              <div class="remessas-list">
+                <div v-for="(_, i) in form.cod_materiais" :key="'cm' + i" class="remessa-row">
+                  <div class="form-group" style="flex:1">
+                    <label v-if="i === 0">Cod Material</label>
+                    <input v-model.number="form.cod_materiais[i]" type="number" placeholder="Ex: 10023456" />
+                  </div>
+                  <button v-if="form.cod_materiais.length > 1" type="button" class="btn btn-secondary btn-sm remessa-remove" @click="removeItem('cod_materiais', i)" style="margin-top:auto">
+                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                  </button>
+                </div>
+                <button type="button" class="btn btn-ghost btn-sm add-remessa-btn" @click="addItem('cod_materiais')">
+                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 2v8M2 6h8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                  Adicionar cod. material
+                </button>
+              </div>
+            </div>
+
+            <div class="multi-field">
+              <div class="remessas-list">
+                <div v-for="(_, i) in form.ordens_venda" :key="'ov' + i" class="remessa-row">
+                  <div class="form-group" style="flex:1">
+                    <label v-if="i === 0">Ordem de Venda</label>
+                    <input v-model.number="form.ordens_venda[i]" type="number" placeholder="Ex: 3000123" />
+                  </div>
+                  <button v-if="form.ordens_venda.length > 1" type="button" class="btn btn-secondary btn-sm remessa-remove" @click="removeItem('ordens_venda', i)" style="margin-top:auto">
+                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                  </button>
+                </div>
+                <button type="button" class="btn btn-ghost btn-sm add-remessa-btn" @click="addItem('ordens_venda')">
+                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 2v8M2 6h8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                  Adicionar ordem de venda
+                </button>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -208,10 +266,10 @@ const fileInput = ref(null)
 const pendingFiles = ref([])
 const isUploading = computed(() => pendingFiles.value.some(f => f.uploading))
 
-const form = ref({ causa: '', area_causadora: '', empresa_causadora: '', acao: '', uf: '', remessas: [null], detalhe: '' })
+const form = ref({ causa: '', area_causadora: '', empresa_causadora: '', acao: '', uf: '', remessas: [null], dts: [null], cod_materiais: [null], ordens_venda: [null], detalhe: '' })
 
-function addRemessa() { form.value.remessas.push(null) }
-function removeRemessa(i) { form.value.remessas.splice(i, 1) }
+function addItem(field) { form.value[field].push(null) }
+function removeItem(field, i) { form.value[field].splice(i, 1) }
 
 function onFileChange(e) { Array.from(e.target.files).forEach(addFile); e.target.value = '' }
 function onDrop(e) { isDragging.value = false; Array.from(e.dataTransfer.files).forEach(addFile) }
@@ -277,6 +335,9 @@ async function submit() {
     const res = await api.fcas.create({
       ...form.value,
       remessas: form.value.remessas.filter(r => r !== null && r !== '' && !isNaN(r)),
+      dts: form.value.dts.filter(r => r !== null && r !== '' && !isNaN(r)),
+      cod_materiais: form.value.cod_materiais.filter(r => r !== null && r !== '' && !isNaN(r)),
+      ordens_venda: form.value.ordens_venda.filter(r => r !== null && r !== '' && !isNaN(r)),
       anexo_urls: pendingFiles.value.filter(f => f.key).map(f => f.key),
     })
     router.push(`/fca/${res.id}`)
@@ -329,6 +390,11 @@ onUnmounted(() => { window.removeEventListener('paste', onPaste) })
 .remessa-row { display: flex; gap: var(--space-2); align-items: flex-end; }
 .remessa-remove { align-self: flex-end; padding: var(--space-2); }
 .add-remessa-btn { align-self: flex-start; margin-top: var(--space-1); color: var(--color-primary-600); }
+
+/* Campos múltiplos */
+.multi-fields { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4) var(--space-5); }
+.multi-field { display: flex; flex-direction: column; }
+@media (max-width: 900px) { .multi-fields { grid-template-columns: 1fr; } }
 
 /* Drop zone */
 .drop-zone {
