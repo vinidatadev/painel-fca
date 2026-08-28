@@ -71,7 +71,7 @@
         </h2>
         <div class="fila-tools">
           <div class="colunas-wrap">
-            <button type="button" class="btn btn-secondary btn-sm" @click="showColunasMenu = !showColunasMenu">
+            <button type="button" class="btn btn-secondary btn-sm" @click.stop="showColunasMenu = !showColunasMenu">
               <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><rect x="2" y="2" width="3" height="3" rx="1" stroke="currentColor" stroke-width="1.4"/><rect x="7" y="2" width="3" height="3" rx="1" stroke="currentColor" stroke-width="1.4"/><rect x="12" y="2" width="3" height="3" rx="1" stroke="currentColor" stroke-width="1.4"/><rect x="2" y="7" width="3" height="3" rx="1" stroke="currentColor" stroke-width="1.4"/><rect x="7" y="7" width="3" height="3" rx="1" stroke="currentColor" stroke-width="1.4"/><rect x="12" y="7" width="3" height="3" rx="1" stroke="currentColor" stroke-width="1.4"/><rect x="2" y="12" width="3" height="3" rx="1" stroke="currentColor" stroke-width="1.4"/><rect x="7" y="12" width="3" height="3" rx="1" stroke="currentColor" stroke-width="1.4"/><rect x="12" y="12" width="3" height="3" rx="1" stroke="currentColor" stroke-width="1.4"/></svg>
               Colunas
             </button>
