@@ -244,7 +244,7 @@ class ResponderBody(BaseModel):
 class ApontarCausaBody(BaseModel):
     setor: str = Field(..., min_length=1)
     empresa: str = Field(..., min_length=1)
-    detalhe: str | None = None
+    detalhe: str = Field(..., min_length=1)
 
 
 # ── Rotas ─────────────────────────────────────────────────────────────────────
@@ -757,7 +757,9 @@ async def apontar_causa(
 ):
     """Registra outro setor causador do FCA (apenas informação, não encaminha).
 
-    Só o setor/empresa da etapa ativa (que está tratando) pode apontar.
+    Somente o setor/empresa da PRIMEIRA etapa (a área causadora que recebeu a
+    solicitação original) pode apontar — mesmo que ele já tenha encaminhado.
+    Quem recebe encaminhamentos posteriores não tem essa opção.
     Se já houver apontamento, atualiza o registro existente.
     """
     result = await db.execute(
@@ -772,8 +774,16 @@ async def apontar_causa(
     etapa_atual = _etapa_ativa(fca.etapas)
     if not etapa_atual:
         raise HTTPException(status_code=409, detail="Não há etapa ativa neste FCA")
-    if etapa_atual.setor != current["sector"] or etapa_atual.empresa != current["company"]:
-        raise HTTPException(status_code=403, detail="Não é a vez do seu setor neste FCA")
+
+    primeira_etapa = min(fca.etapas, key=lambda e: e.order_index)
+    if (
+        primeira_etapa.setor != current["sector"]
+        or primeira_etapa.empresa != current["company"]
+    ):
+        raise HTTPException(
+            status_code=403,
+            detail="Apenas o setor causador inicial pode apontar causa",
+        )
 
     if not validate_company_sector(body.empresa, body.setor):
         raise HTTPException(status_code=422, detail=f"Setor/empresa inválido: {body.setor} + {body.empresa}")

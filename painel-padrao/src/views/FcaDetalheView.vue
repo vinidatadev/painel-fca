@@ -149,7 +149,7 @@
       </div>
 
       <!-- Apontar Causa -->
-      <div v-if="minhaVez" class="card apontar-card" style="margin-top:var(--space-4)">
+      <div v-if="podeApontar" class="card apontar-card" style="margin-top:var(--space-4)">
         <div class="resposta-header">
           <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M3 5h12M3 9h12M3 13h7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
           <span>Apontar Causa</span>
@@ -177,8 +177,8 @@
             </select>
           </div>
           <div class="form-group" style="margin-top:var(--space-3)">
-            <label>Detalhe</label>
-            <textarea v-model="apontar.detalhe" rows="3" placeholder="Detalhe do apontamento (opcional)..."></textarea>
+            <label>Detalhe <span class="req">*</span></label>
+            <textarea v-model="apontar.detalhe" required rows="3" placeholder="Detalhe do apontamento (obrigatório)..."></textarea>
           </div>
           <p v-if="errorApontar" class="error-msg">{{ errorApontar }}</p>
           <div class="apontar-actions">
@@ -356,6 +356,12 @@ const minhaVez = computed(() => {
   if (!etapaAtiva.value || !user.value) return false
   return etapaAtiva.value.setor === user.value.sector && etapaAtiva.value.empresa === user.value.company
 })
+const podeApontar = computed(() => {
+  if (!fca.value || !user.value || !etapaAtiva.value) return false
+  const primeira = [...fca.value.etapas].sort((a, b) => a.order_index - b.order_index)[0]
+  if (!primeira) return false
+  return primeira.setor === user.value.sector && primeira.empresa === user.value.company
+})
 const podeEncerrar = computed(() => {
   if (!fca.value || !user.value) return false
   if (fca.value.status !== 'aguardando_devolutiva') return false
@@ -384,6 +390,7 @@ function cancelarApontar() { showApontar.value = false }
 async function apontarCausa() {
   errorApontar.value = ''
   if (!apontar.value.setor || !apontar.value.empresa) { errorApontar.value = 'Preencha o setor e a empresa.'; return }
+  if (!apontar.value.detalhe || !apontar.value.detalhe.trim()) { errorApontar.value = 'O detalhe é obrigatório.'; return }
   subApontar.value = true
   try {
     await api.fcas.apontarCausa(fca.value.id, { ...apontar.value })
