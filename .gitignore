@@ -38,3 +38,6 @@ Thumbs.db
 
 # ── Docs internos de infra (contém IPs/domínios de produção) ─────────────────
 docs/minio-troubleshooting.md
+
+# ── Config nginx de produção (contém IP do servidor) ─────────────────────────
+nginx.https.conf
