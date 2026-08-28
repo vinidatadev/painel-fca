@@ -23,7 +23,7 @@
           <option value="">Todos os status</option>
           <option value="aberto">Aberto</option>
           <option value="em_andamento">Em andamento</option>
-          <option value="aguardando_devolutiva">Ag. devolutiva</option>
+          <option value="aguardando_devolutiva">Aguardando confirmação</option>
           <option value="encerrado">Encerrado</option>
           <option v-if="user?.role === 'admin'" value="cancelado">Cancelado</option>
         </select>
@@ -199,7 +199,7 @@ function clearFilters() {
 }
 function goPage(p) { page.value = p; load() }
 function labelStatus(s) {
-  return { aberto: 'Aberto', em_andamento: 'Em andamento', aguardando_devolutiva: 'Ag. devolutiva', encerrado: 'Encerrado', cancelado: 'Cancelado' }[s] || s
+  return { aberto: 'Aberto', em_andamento: 'Em andamento', aguardando_devolutiva: 'Aguardando confirmação', encerrado: 'Encerrado', cancelado: 'Cancelado' }[s] || s
 }
 function formatDate(iso) { return new Date(iso).toLocaleDateString('pt-BR') }
 async function exportar(format) {

@@ -468,7 +468,7 @@ onUnmounted(() => {
   registerWsListener?.(null)
 })
 
-function labelStatus(s) { return { aberto:'Aberto', em_andamento:'Em andamento', aguardando_devolutiva:'Ag. devolutiva', encerrado:'Encerrado' }[s] || s }
+function labelStatus(s) { return { aberto:'Aberto', em_andamento:'Em andamento', aguardando_devolutiva:'Aguardando confirmação', encerrado:'Encerrado' }[s] || s }
 function labelEtapaStatus(s) { return { pendente:'Pendente', em_andamento:'Em andamento', concluido:'Concluído' }[s] || s }
 function statusEtapaBadge(s) { return { pendente:'badge-aberto', em_andamento:'badge-em_andamento', concluido:'badge-encerrado' }[s] || 'badge-aberto' }
 function formatDate(iso) { if (!iso) return '—'; return new Date(iso).toLocaleString('pt-BR') }

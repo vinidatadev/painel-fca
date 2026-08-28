@@ -40,7 +40,7 @@
           </span>
         </div>
         <div class="kpi-value">{{ data.acompanhamento.aguardando_devolutiva }}</div>
-        <div class="kpi-label">Ag. devolutiva</div>
+        <div class="kpi-label">Ag. confirmação</div>
       </div>
       <div class="kpi-card kpi-green" style="--delay:180ms">
         <div class="kpi-header">
@@ -339,7 +339,7 @@ onMounted(() => { carregarColunas(); load(); window.addEventListener('click', fe
 onUnmounted(() => { window.removeEventListener('click', fecharMenus); registerWsListener?.(null) })
 
 function labelStatus(s) {
-  return { aberto: 'Aberto', em_andamento: 'Em andamento', aguardando_devolutiva: 'Ag. devolutiva', encerrado: 'Encerrado' }[s] || s
+  return { aberto: 'Aberto', em_andamento: 'Em andamento', aguardando_devolutiva: 'Aguardando confirmação', encerrado: 'Encerrado' }[s] || s
 }
 </script>
 

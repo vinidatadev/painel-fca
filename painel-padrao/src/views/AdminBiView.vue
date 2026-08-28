@@ -58,7 +58,7 @@
             <option value="">Todos</option>
             <option value="aberto">Aberto</option>
             <option value="em_andamento">Em andamento</option>
-            <option value="aguardando_devolutiva">Aguardando devolutiva</option>
+            <option value="aguardando_devolutiva">Aguardando confirmação</option>
             <option value="encerrado">Encerrado</option>
           </select>
         </div>
