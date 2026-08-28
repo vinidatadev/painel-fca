@@ -88,6 +88,10 @@ async def login(request: Request, body: LoginRequest, db: AsyncSession = Depends
         or not verify_password(body.password, user.password_hash)
         or not user.is_active
     ):
+        logger.warning(
+            "[LOGIN] ip=%s email=%s razao=credenciais_invalidas",
+            request.client.host if request.client else "-", body.email,
+        )
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Credenciais inválidas")
 
     token = create_local_token(str(user.id), user.email, user.name, user.role,
@@ -111,6 +115,7 @@ async def login(request: Request, body: LoginRequest, db: AsyncSession = Depends
 
 
 @router.post("/setup", status_code=status.HTTP_201_CREATED)
+@limiter.limit("3/hour")
 async def setup_first_admin(request: Request, body: SetupRequest, db: AsyncSession = Depends(get_db)):
     """Cria o primeiro admin (Customer Service / ACC). Bloqueado após primeiro uso."""
     count = await db.execute(select(func.count()).select_from(User))
@@ -156,6 +161,7 @@ async def setup_status(db: AsyncSession = Depends(get_db)):
 
 
 class ChangePasswordRequest(BaseModel):
+    senha_atual: str = Field(..., min_length=1)
     nova_senha: str = Field(..., min_length=8, max_length=100)
 
 
@@ -172,6 +178,8 @@ async def change_password(
         raise HTTPException(status_code=404, detail="Usuário não encontrado")
     if user.auth_provider != "local":
         raise HTTPException(status_code=400, detail="Conta Microsoft não usa senha local")
+    if not user.password_hash or not verify_password(body.senha_atual, user.password_hash):
+        raise HTTPException(status_code=400, detail="Senha atual incorreta")
 
     user.password_hash = hash_password(body.nova_senha)
     user.must_change_password = False

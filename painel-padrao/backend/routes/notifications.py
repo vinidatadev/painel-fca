@@ -9,6 +9,7 @@ GET  /notifications/unread-count → retorna contagem de não lidas
 POST /notifications/comunicado → (admin) cria comunicado manual
 """
 import uuid
+import logging
 from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
@@ -18,10 +19,12 @@ from database import get_db
 from models import Notificacao, User
 from auth import require_user
 from ws_manager import manager
+import storage
 
 router = APIRouter(prefix="/notifications", tags=["notifications"])
 any_user = require_user()
 only_admin = require_user(required_role="admin")
+logger = logging.getLogger(__name__)
 
 LIMIT = 50
 
@@ -43,12 +46,20 @@ class ComunicadoCreate(BaseModel):
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 def _fmt(n: Notificacao) -> dict:
+    # Resolve a URL sob demanda a partir da object_key (não persiste presigned,
+    # que expira e quebra com mudança de endpoint do MinIO).
+    imagem_url: str | None = n.imagem_url
+    if n.imagem_key:
+        try:
+            imagem_url = storage.get_presigned_url(n.imagem_key)
+        except Exception:
+            logger.exception("Falha ao gerar URL pré-assinada p/ notificação key=%s", n.imagem_key)
     return {
         "id": str(n.id),
         "tipo": n.tipo,
         "titulo": n.titulo,
         "mensagem": n.mensagem,
-        "imagem_url": n.imagem_url,
+        "imagem_url": imagem_url,
         "link_rota": n.link_rota,
         "lida": n.lida,
         "created_at": n.created_at.isoformat(),
@@ -62,7 +73,7 @@ async def _criar_notificacoes(
     mensagem: str | None,
     link_rota: str | None,
     user_ids: list[uuid.UUID],
-    imagem_url: str | None = None,
+    imagem_key: str | None = None,
 ) -> list[str]:
     """Cria uma linha de notificação por user_id e retorna a lista de str ids para WS."""
     rows = [
@@ -71,7 +82,7 @@ async def _criar_notificacoes(
             tipo=tipo,
             titulo=titulo,
             mensagem=mensagem,
-            imagem_url=imagem_url,
+            imagem_key=imagem_key,
             link_rota=link_rota,
             lida=False,
         )
@@ -159,15 +170,9 @@ async def criar_comunicado(
     db: AsyncSession = Depends(get_db),
 ):
     """Admin cria comunicado manual (nova funcionalidade, aviso, etc.)."""
-    import storage as storage_svc
-
-    # Resolve URL da imagem se fornecida
-    imagem_url: str | None = None
-    if body.imagem_key:
-        try:
-            imagem_url = storage_svc.get_presigned_url(body.imagem_key)
-        except Exception:
-            imagem_url = None
+    # A imagem do comunicado é armazenada como object_key (NÃO como presigned URL,
+    # que expira e quebra quando o endpoint do MinIO muda). A URL é resolvida sob
+    # demanda em GET /notifications/ via _fmt → storage.get_presigned_url.
 
     # Resolve destinatários
     q = select(User).where(User.is_active == True)  # noqa: E712
@@ -190,7 +195,7 @@ async def criar_comunicado(
         mensagem=body.mensagem,
         link_rota=body.link_rota,
         user_ids=user_ids,
-        imagem_url=imagem_url,
+        imagem_key=body.imagem_key,
     )
     await db.commit()
 

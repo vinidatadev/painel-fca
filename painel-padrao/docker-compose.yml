@@ -1,42 +1,73 @@
 services:
+  # ── Camada de dados (interna — sem exposição no host) ────────────────────────
   minio:
     image: minio/minio:latest
     restart: unless-stopped
     command: server /data --console-address ":9001"
     environment:
-      MINIO_ROOT_USER: ${MINIO_USER:-minioadmin}
-      MINIO_ROOT_PASSWORD: ${MINIO_PASSWORD:-minioadmin}
-    ports:
-      - "9000:9000"
-      - "9001:9001"
+      MINIO_ROOT_USER: ${MINIO_USER:? Defina MINIO_USER no .env}
+      MINIO_ROOT_PASSWORD: ${MINIO_PASSWORD:? Defina MINIO_PASSWORD no .env}
+    # M-5: MinIO NÃO expõe portas no host — acessível só pela rede interna.
+    expose:
+      - "9000"
+      - "9001"
     volumes:
       - minio_data:/data
+    networks:
+      - backend_net
+      - frontend_net
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
 
   db:
     image: postgres:16-alpine
     restart: unless-stopped
     environment:
-      POSTGRES_USER: ${DB_USER:-admin}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-admin}
-      POSTGRES_DB: ${DB_NAME:-appdb}
+      POSTGRES_USER: ${DB_USER:? Defina DB_USER no .env}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:? Defina DB_PASSWORD no .env}
+      POSTGRES_DB: ${DB_NAME:? Defina DB_NAME no .env}
     volumes:
       - pg_data:/var/lib/postgresql/data
+    # M-5: Postgres também não precisa expor no host em produção.
+    expose:
+      - "5432"
+    networks:
+      - backend_net
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-admin} -d ${DB_NAME:-appdb}"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:?} -d ${DB_NAME:?}"]
       interval: 5s
       timeout: 5s
       retries: 5
 
+  # ── API (interna — só o Nginx enxerga) ──────────────────────────────────────
   backend:
     build: ./backend
     restart: unless-stopped
     env_file: ./backend/.env
-    ports:
-      - "8000:8000"
+    # M-5: remove a exposição direta da porta 8000 no host. O tráfego
+    # externo passa estritamente pelo reverse proxy (Nginx) no frontend.
+    expose:
+      - "8000"
     depends_on:
       db:
         condition: service_healthy
+      minio:
+        condition: service_healthy
+    networks:
+      - backend_net
+      - frontend_net
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/health', timeout=5).status==200 else 1)\""]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 20s
 
+  # ── Frontend / Reverse Proxy (única entrada pública) ────────────────────────
   frontend:
     build:
       context: .
@@ -44,13 +75,24 @@ services:
         VITE_AZURE_CLIENT_ID: ${VITE_AZURE_CLIENT_ID}
         VITE_AZURE_TENANT_ID: ${VITE_AZURE_TENANT_ID}
         VITE_AZURE_REDIRECT_URI: ${VITE_AZURE_REDIRECT_URI:-http://localhost}
-        VITE_API_URL: ${VITE_API_URL:-http://localhost:8000}
+        VITE_API_URL: ${VITE_API_URL:-http://localhost}
         NGINX_CONF: nginx.local.conf
     restart: unless-stopped
     ports:
       - "80:80"
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
+    networks:
+      - frontend_net
+
+networks:
+  # Rede interna entre backend, db e minio (isolada do host)
+  backend_net:
+    driver: bridge
+  # Rede entre frontend (Nginx) e backend
+  frontend_net:
+    driver: bridge
 
 volumes:
   pg_data:

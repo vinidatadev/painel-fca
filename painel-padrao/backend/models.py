@@ -225,7 +225,8 @@ class Notificacao(Base):
     tipo: Mapped[str] = mapped_column(String(20), nullable=False)           # comunicado | fca | help
     titulo: Mapped[str] = mapped_column(String(200), nullable=False)
     mensagem: Mapped[str | None] = mapped_column(Text, nullable=True)
-    imagem_url: Mapped[str | None] = mapped_column(Text, nullable=True)     # apenas para comunicados
+    imagem_url: Mapped[str | None] = mapped_column(Text, nullable=True)     # legado (presigned URL) — NÃO usar p/ novos
+    imagem_key: Mapped[str | None] = mapped_column(Text, nullable=True)     # object_key no MinIO (resolve URL sob demanda)
     link_rota: Mapped[str | None] = mapped_column(String(300), nullable=True)  # ex: /fca/{id}
     lida: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False, index=True)
     created_at: Mapped[datetime] = mapped_column(

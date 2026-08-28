@@ -188,6 +188,18 @@ async def lifespan(app: FastAPI):
         await conn.execute(_sql(
             "CREATE INDEX IF NOT EXISTS ix_comentarios_internos_fca_id ON comentarios_internos(fca_id)"
         ))
+        # A-2: Garante constraint UNIQUE em fcas.cod_fca (barreira final contra
+        # race condition na geração do código, além do advisory lock em _get_seq).
+        await conn.execute(_sql(
+            "DO $$ BEGIN "
+            "  IF NOT EXISTS ("
+            "    SELECT 1 FROM pg_constraint"
+            "     WHERE conname = 'uq_fcas_cod_fca' AND conrelid = 'fcas'::regclass"
+            "  ) THEN"
+            "    ALTER TABLE fcas ADD CONSTRAINT uq_fcas_cod_fca UNIQUE (cod_fca);"
+            "  END IF;"
+            "END $$;"
+        ))
         # Migração: tabela de notificacoes
         await conn.execute(_sql(
             "CREATE TABLE IF NOT EXISTS notificacoes ("
@@ -210,6 +222,17 @@ async def lifespan(app: FastAPI):
         ))
         await conn.execute(_sql(
             "CREATE INDEX IF NOT EXISTS ix_notificacoes_created_at ON notificacoes(created_at)"
+        ))
+        # Coluna imagem_key: comunicaços passam a guardar a object_key (não mais
+        # uma presigned URL, que expira e quebra quando o endpoint do MinIO muda).
+        await conn.execute(_sql(
+            "ALTER TABLE notificacoes ADD COLUMN IF NOT EXISTS imagem_key TEXT"
+        ))
+        # Limpa imagem_url legado que guardava presigned URLs ( Sexe contém Signature
+        # é uma URL assinada, que expira / quebra com mudança de endpoint).
+        await conn.execute(_sql(
+            "UPDATE notificacoes SET imagem_url = NULL "
+            "WHERE imagem_url IS NOT NULL AND imagem_url LIKE '%Signature%'"
         ))
         # Migrações: onboarding e primeiro acesso
         await conn.execute(_sql(
@@ -297,7 +320,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[o.strip() for o in allowed_origins],
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type"],
 )
 
@@ -322,11 +345,26 @@ async def health():
 
 
 @app.websocket("/ws")
-async def websocket_endpoint(ws: WebSocket, user_id: str = Query(...)):
+async def websocket_endpoint(ws: WebSocket, token: str = Query(...)):
     """
-    Endpoint WebSocket. Requer user_id como query param:
-      ws://host/ws?user_id=<uuid>
+    Endpoint WebSocket. Requer token JWT via query param:
+      ws://host/ws?token=<JWT>
+
+    O token é validado (Azure AD RS256 ou local HS256) ANTES de aceitar a
+    conexão. O socket é registrado com o user_id extraído do payload — nunca
+    confiamos em user_id vindo solto na URL.
     """
+    from auth import authenticate_token, AuthError
+    from fastapi import status as _status
+
+    try:
+        async with AsyncSessionLocal() as db:
+            user, _provider = await authenticate_token(token, db)
+    except AuthError:
+        await ws.close(code=_status.WS_1008_POLICY_VIOLATION, reason="Token inválido")
+        return
+
+    user_id = str(user.id)
     await manager.connect(ws, user_id)
     try:
         while True:

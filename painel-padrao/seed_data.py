@@ -2,12 +2,15 @@
 seed_data.py — Popula o banco com dados realistas para testar o relatório BI.
 
 Uso (dentro do container backend):
-    DATABASE_URL=postgresql://admin:admin@db:5432/appdb python /tmp/seed_data.py
+    DATABASE_URL="postgresql+asyncpg://<user>:<senha>@db:5432/appdb" python /tmp/seed_data.py
 
 Cria:
-  - 1 admin  (admin@fca.local / Admin@123)
-  - 10 usuários distribuídos por empresa/setor  (senha: Senha@123)
+  - 1 admin  (admin@fca.local)
+  - 10 usuários distribuídos por empresa/setor
   - 80 FCAs com datas nos últimos 60 dias + etapas com SLA variado
+
+Senhas dos usuários de seed: defina SEED_ADMIN_PASSWORD e SEED_USER_PASSWORD
+no ambiente. Sem elas o script usa valores de DEV (apenas ambiente local).
 """
 
 import asyncio, os, uuid, random, hashlib
@@ -16,9 +19,17 @@ from datetime import datetime, timezone, timedelta
 import asyncpg
 import bcrypt
 
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://admin:admin@db:5432/appdb")
+DATABASE_URL = os.getenv("DATABASE_URL")
+if not DATABASE_URL:
+    raise SystemExit(
+        "Defina DATABASE_URL no ambiente (ex: postgresql+asyncpg://user:senha@db:5432/appdb)"
+    )
 # asyncpg não aceita o prefixo "postgresql+asyncpg"
 DSN = DATABASE_URL.replace("postgresql+asyncpg://", "postgresql://")
+
+# Senhas de seed — DEV ONLY. Em qualquer ambiente não-local, defina as env vars.
+SEED_ADMIN_PASSWORD = os.getenv("SEED_ADMIN_PASSWORD", "Admin@123")
+SEED_USER_PASSWORD  = os.getenv("SEED_USER_PASSWORD", "Senha@123")
 
 # ─────────────────────────────────────────────────────────────────────────────
 CAUSAS = [
@@ -116,7 +127,7 @@ async def main():
         ON CONFLICT (email) DO UPDATE
             SET role='admin', acesso_relatorio=true, password_hash=$4
         RETURNING id
-    """, admin_id, "admin@fca.local", "Administrador", hash_pw("Admin@123"), NOW)
+    """, admin_id, "admin@fca.local", "Administrador", hash_pw(SEED_ADMIN_PASSWORD), NOW)
     admin_id = str(row["id"])
 
     # ── 2. Usuários ───────────────────────────────────────────────────────────
@@ -142,7 +153,7 @@ async def main():
             VALUES ($1,$2,$3,$4,'local',$5,$6,'user',false,true,true,false,true,'som1',$7)
             ON CONFLICT (email) DO UPDATE SET company=$5, sector=$6, password_hash=$4
             RETURNING id
-        """, uid(), email, name, hash_pw("Senha@123"), company, sector, NOW)
+        """, uid(), email, name, hash_pw(SEED_USER_PASSWORD), company, sector, NOW)
         all_creators.append({"id": str(row["id"]), "company": company, "sector": sector})
 
     # ── 3. Opções (seed se vazio) ─────────────────────────────────────────────
@@ -233,8 +244,8 @@ async def main():
     await conn.close()
     print("""
 ✅ Seed concluído!
-   admin@fca.local   →  Admin@123
-   demais usuários   →  Senha@123
+   admin@fca.local        → senha definida em SEED_ADMIN_PASSWORD
+   demais usuários        → senha definida em SEED_USER_PASSWORD
    FCAs criados: 80
 """)
 

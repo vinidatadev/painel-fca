@@ -1,6 +1,7 @@
 import uuid
 import csv
 import io
+import logging
 from datetime import datetime, timezone
 from uuid import UUID
 from typing import Any
@@ -8,7 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, or_, and_, cast, Text
+from sqlalchemy import select, func, or_, and_, cast, Text, text as sa_text
 from sqlalchemy.orm import selectinload
 from database import get_db
 from models import User, FCA, FCAEtapa
@@ -24,12 +25,25 @@ import notif_helper
 
 router = APIRouter(prefix="/fcas", tags=["fcas"])
 any_user = require_user()
+logger = logging.getLogger(__name__)
+
+# M-3: limite de linhas produzidas por exportação — evita estouro/DoS de
+# memória ao montar workbook/CSV totalmente em memória.
+MAX_EXPORT_ROWS = 10000
 
 
 # ── helpers ──────────────────────────────────────────────────────────────────
 
-async def _get_seq(db: AsyncSession) -> int:
-    result = await db.execute(select(func.count()).select_from(FCA))
+async def _get_seq(db: AsyncSession, year: int) -> int:
+    # A-2: advisory lock transitório (pg_advisory_xact_key) serializa a
+    # contagem+inserção entre requisições concorrentes, evitando cod_fca
+    # duplicado. O lock é liberado automaticamente ao fim da transação.
+    LOCK_KEY = 0x46434159  # 'FCAY'
+    # LOCK_KEY e year são inteiros controlados pelo servidor (constante e
+    # datetime.now().year) — sem input externo —, portanto inline-seguros.
+    await db.execute(sa_text(f"SELECT pg_advisory_xact_lock({LOCK_KEY}, {year})"))
+    prefix = f"FCA-{year}-%"
+    result = await db.execute(select(func.count()).select_from(FCA).where(FCA.cod_fca.like(prefix)))
     return (result.scalar() or 0) + 1
 
 
@@ -326,6 +340,14 @@ async def export_fcas(
     result = await db.execute(stmt)
     fcas = result.scalars().unique().all()
 
+    # M-3: limita o volume exportado (evita DoS de memória com workbook/CSV
+    # inteiro em memória). Excedido -> 422 para o cliente refinar os filtros.
+    if len(fcas) > MAX_EXPORT_ROWS:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Exportação limitada a {MAX_EXPORT_ROWS} linhas. Aplique filtros para reduzir o volume.",
+        )
+
     headers_cols = [
         "cod_fca", "causa", "acao", "uf", "remessas",
         "setor_solicitante", "empresa_solicitante",
@@ -380,7 +402,10 @@ async def export_fcas(
                 media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                 headers={"Content-Disposition": "attachment; filename=fcas.xlsx"},
             )
+    except HTTPException:
+        raise
     except Exception as e:
+        logger.exception("Erro ao gerar exportação de FCAs (formato=%s, total=%d)", format, len(fcas))
         raise HTTPException(status_code=500, detail="Erro ao gerar exportação")
 
 
@@ -413,8 +438,8 @@ async def create_fca(
     if setor_destino == current["sector"] and empresa_destino == current["company"]:
         raise HTTPException(status_code=422, detail="Você não pode abrir um FCA direcionado ao seu próprio setor")
 
-    seq = await _get_seq(db)
     year = datetime.now(timezone.utc).year
+    seq = await _get_seq(db, year)
     cod_fca = f"FCA-{year}-{seq:04d}"
 
     fca = FCA(
@@ -470,7 +495,7 @@ async def create_fca(
     try:
         email_svc.notify_abertura(fca_loaded, fca_loaded.etapas[0])
     except Exception:
-        pass
+        logger.exception("Falha ao enviar e-mail de abertura do FCA %s", fca_loaded.cod_fca)
 
     await manager.broadcast("fca_updated", destinatarios=[{"setor": setor_etapa, "empresa": empresa_etapa}])
     await notif_helper.notif_fca_criado(db, fca_loaded)
@@ -606,13 +631,17 @@ async def responder_fca(
             concluidas = [e for e in fca_reloaded.etapas if e.status == "concluido"]
             email_svc.notify_devolutiva(fca_reloaded, concluidas)
     except Exception:
-        pass
+        logger.exception("Falha ao enviar e-mail de etapa/devolutiva do FCA %s", fca_reloaded.cod_fca)
 
     await manager.broadcast(
         "fca_updated",
         destinatarios=[{"setor": e.setor, "empresa": e.empresa} for e in (pendentes + novas_etapas)] if (pendentes or novas_etapas) else []
     )
-    await notif_helper.notif_fca_atualizado(db, fca, "Etapa respondida", current["name"], uuid.UUID(current["user_id"]))
+    await notif_helper.notif_fca_atualizado(
+        db, fca, "respondeu",
+        current["name"], uuid.UUID(current["user_id"]),
+        current["sector"], current["company"],
+    )
     await db.commit()
     return {
         "fca_status": fca.status,
@@ -661,7 +690,11 @@ async def encerrar_fca(
     await db.commit()
 
     await manager.broadcast("fca_updated", destinatarios=[])
-    await notif_helper.notif_fca_atualizado(db, fca, "FCA encerrado", current["name"], uuid.UUID(current["user_id"]))
+    await notif_helper.notif_fca_atualizado(
+        db, fca, "encerrou",
+        current["name"], uuid.UUID(current["user_id"]),
+        current["sector"], current["company"],
+    )
     await db.commit()
     return {"fca_status": "encerrado"}
 
@@ -768,7 +801,10 @@ async def create_comentario(
     autor = autor_result.scalar_one()
 
     await manager.broadcast("fca_updated", destinatarios=_destinatarios_fca(fca))
-    await notif_helper.notif_fca_comentario(db, fca, current["name"], uuid.UUID(current["user_id"]))
+    await notif_helper.notif_fca_comentario(
+        db, fca, current["name"], uuid.UUID(current["user_id"]),
+        current["sector"], current["company"],
+    )
     await db.commit()
     return {
         "id": str(comentario.id),

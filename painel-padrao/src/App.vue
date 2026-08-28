@@ -4,8 +4,8 @@
   </div>
 
   <template v-else>
-    <!-- Troca de senha obrigatória no primeiro acesso -->
-    <div v-if="user && user.must_change_password" class="login-wrapper">
+    <!-- Troca de senha obrigatória no primeiro acesso (apenas contas locais) -->
+    <div v-if="user && user.must_change_password && user.provider === 'local'" class="login-wrapper">
       <ChangePasswordView @done="onPasswordChanged" />
     </div>
 
@@ -219,7 +219,7 @@
 <script setup>
 import { ref, computed, inject, onMounted, provide } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { clearLocalToken, api, getLocalToken } from './api'
+import { clearLocalToken, api, getLocalToken, getToken } from './api'
 import LoginView from './views/LoginView.vue'
 import ChangePasswordView from './views/ChangePasswordView.vue'
 import OnboardingView from './views/OnboardingView.vue'
@@ -320,10 +320,14 @@ provide('registerWsListener', (fn) => { wsListener.value = fn })
 let _ws = null
 let _wsTimer = null
 
-function connectWs() {
+async function connectWs() {
   if (!user.value) return
-  const base = import.meta.env.VITE_API_URL || 'http://localhost:8000'
-  const url = base.replace(/^http/, 'ws') + `/ws?user_id=${user.value.id}`
+  const apiUrl = import.meta.env.VITE_API_URL || ''
+  const base = apiUrl || `${window.location.protocol}//${window.location.host}`
+  let token
+  try { token = await getToken() } catch { return }
+  if (!token) return
+  const url = base.replace(/^http/, 'ws') + `/ws?token=${encodeURIComponent(token)}`
   _ws = new WebSocket(url)
   _ws.onmessage = (ev) => {
     let event = null; let destinatarios = []

@@ -7,10 +7,17 @@ from botocore.config import Config
 from botocore.exceptions import ClientError
 
 ENDPOINT   = os.getenv("MINIO_ENDPOINT", "minio:9000")
-ACCESS_KEY = os.getenv("MINIO_ACCESS_KEY", "minioadmin")
-SECRET_KEY = os.getenv("MINIO_SECRET_KEY", "minioadmin")
+ACCESS_KEY = os.getenv("MINIO_ACCESS_KEY")
+SECRET_KEY = os.getenv("MINIO_SECRET_KEY")
 ONBOARDING_BUCKET = "fca-arquivos"
 PUBLIC_URL = os.getenv("MINIO_PUBLIC_URL", "http://localhost:9000")
+
+# --- Validação fail-fast no startup (C-4): sem credenciais padrão inseguras ---
+if not ACCESS_KEY or not SECRET_KEY:
+    raise RuntimeError(
+        "MINIO_ACCESS_KEY/MINIO_SECRET_KEY não definidos no .env. "
+        "Removidos os fallbacks 'minioadmin' por segurança."
+    )
 
 ALLOWED_VIDEO_TYPES = {"video/mp4", "video/webm", "video/ogg"}
 MAX_VIDEO_SIZE = 500 * 1024 * 1024  # 500 MB

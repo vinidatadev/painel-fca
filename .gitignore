@@ -1,0 +1,40 @@
+# ── Segredos / config sensível ───────────────────────────────────────────────
+.env
+*.env
+!.env.example
+certs/
+*.pem
+*.key
+*.crt
+
+# ── Backups / snapshots / arquivos empacotados ───────────────────────────────
+*.tar
+*.tar.gz
+*.tgz
+*.zip
+
+# ── Python ───────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# ── Node ─────────────────────────────────────────────────────────────────────
+node_modules/
+dist/
+dist-ssr/
+*.local
+
+# ── IDE / SO ─────────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# ── Banco de dados local ─────────────────────────────────────────────────────
+*.sqlite
+*.db
+
+# ── Docs internos de infra (contém IPs/domínios de produção) ─────────────────
+docs/minio-troubleshooting.md

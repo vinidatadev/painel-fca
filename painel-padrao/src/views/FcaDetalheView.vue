@@ -258,7 +258,7 @@
 </template>
 
 <script setup>
-import { ref, computed, inject, onMounted } from 'vue'
+import { ref, computed, inject, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { api } from '../api'
 import SlaBadge from '../components/SlaBadge.vue'
@@ -329,6 +329,7 @@ async function preloadAnexoUrls() {
   }
 }
 async function loadFca() {
+  if (!route.params.id) return
   try { fca.value = await api.fcas.get(route.params.id) } catch { fca.value = null }
 }
 async function loadComentarios() {
@@ -384,6 +385,10 @@ onMounted(async () => {
   await loadFca(); loading.value = false
   await preloadAnexoUrls(); await loadComentarios()
   registerWsListener?.(_onWsUpdate)
+})
+
+onUnmounted(() => {
+  registerWsListener?.(null)
 })
 
 function labelStatus(s) { return { aberto:'Aberto', em_andamento:'Em andamento', aguardando_devolutiva:'Ag. devolutiva', encerrado:'Encerrado' }[s] || s }

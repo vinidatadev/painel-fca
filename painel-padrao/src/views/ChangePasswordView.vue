@@ -15,6 +15,24 @@
 
       <form @submit.prevent="submit" class="change-pw-form">
         <div class="form-group">
+          <label for="atual">Senha atual</label>
+          <div class="pw-input-wrap">
+            <input
+              id="atual"
+              v-model="atual"
+              :type="showAtual ? 'text' : 'password'"
+              placeholder="Senha temporária enviada pelo admin"
+              autocomplete="current-password"
+              required
+            />
+            <button type="button" class="pw-toggle" @click="showAtual = !showAtual" tabindex="-1">
+              <svg v-if="!showAtual" width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M1 9s3-5.5 8-5.5S17 9 17 9s-3 5.5-8 5.5S1 9 1 9z" stroke="currentColor" stroke-width="1.5"/><circle cx="9" cy="9" r="2.5" stroke="currentColor" stroke-width="1.5"/></svg>
+              <svg v-else width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M2 2l14 14M7.5 6.5A3 3 0 0112 11M4 5C2.5 6.5 1 9 1 9s3 5.5 8 5.5c1.8 0 3.4-.5 4.7-1.3M14.5 12.5C16 11 17 9 17 9s-3-5.5-8-5.5c-.7 0-1.3.1-2 .2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="form-group">
           <label for="nova">Nova senha</label>
           <div class="pw-input-wrap">
             <input
@@ -57,7 +75,7 @@
 
         <p v-if="error" class="form-error">{{ error }}</p>
 
-        <button type="submit" class="btn-primary" :disabled="loading || nova !== confirma || nova.length < 8">
+        <button type="submit" class="btn-primary" :disabled="loading || !atual || nova !== confirma || nova.length < 8">
           <span v-if="loading" class="btn-spinner"></span>
           <span v-else>Salvar e continuar</span>
         </button>
@@ -72,8 +90,10 @@ import { api } from '../api.js'
 
 const emit = defineEmits(['done'])
 
+const atual = ref('')
 const nova = ref('')
 const confirma = ref('')
+const showAtual = ref(false)
 const showNova = ref(false)
 const showConfirma = ref(false)
 const loading = ref(false)
@@ -101,7 +121,7 @@ async function submit() {
   loading.value = true
   error.value = ''
   try {
-    await api.auth.changePassword(nova.value)
+    await api.auth.changePassword(atual.value, nova.value)
     emit('done')
   } catch (e) {
     error.value = e.message || 'Erro ao salvar senha.'

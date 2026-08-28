@@ -214,7 +214,7 @@ async function saveVideo() {
       // Usa XHR para acompanhar progresso
       const data = await new Promise((resolve, reject) => {
         const xhr = new XMLHttpRequest()
-        xhr.open('POST', `${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/onboarding/admin/videos`)
+        xhr.open('POST', `/api/onboarding/admin/videos`)
         const token = localStorage.getItem('local_token')
         if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`)
         xhr.upload.onprogress = (e) => {

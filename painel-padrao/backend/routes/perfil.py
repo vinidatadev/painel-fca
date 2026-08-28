@@ -13,6 +13,24 @@ any_user = require_user()
 
 ALLOWED_AVATAR = {"image/jpeg", "image/png", "image/webp"}
 MAX_AVATAR_SIZE = 2 * 1024 * 1024  # 2 MB
+ALLOWED_AVATAR_EXT = {".jpg", ".jpeg", ".png", ".webp"}
+
+# A-3: assinaturas mágicas para avatar
+_AVATAR_MAGIC = {
+    "image/jpeg": (b"\xff\xd8\xff",),
+    "image/png":  (b"\x89PNG\r\n\x1a\n",),
+    "image/webp": (b"RIFF", b"WEBP"),
+}
+
+
+def _avatar_magic_ok(data: bytes, content_type: str) -> bool:
+    sigs = _AVATAR_MAGIC.get(content_type)
+    if not sigs:
+        return False
+    head = data[:16]
+    if content_type == "image/webp":
+        return head.startswith(b"RIFF") and b"WEBP" in data[:16]
+    return any(head.startswith(s) for s in sigs)
 
 
 class PerfilOut(BaseModel):
@@ -89,9 +107,26 @@ async def upload_avatar(
     if file.content_type not in ALLOWED_AVATAR:
         raise HTTPException(status_code=415, detail="Use JPEG, PNG ou WEBP")
 
-    data = await file.read()
-    if len(data) > MAX_AVATAR_SIZE:
+    # A-3: valida extensão (header Content-Type é spoofável)
+    try:
+        storage.validate_extension(file.filename or "", ALLOWED_AVATAR_EXT)
+    except ValueError:
+        raise HTTPException(status_code=415, detail="Extensão não permitida para avatar.")
+
+    # A-3: checa tamanho declarado antes de ler (mitiga DoS por RAM)
+    if file.size is not None and file.size > MAX_AVATAR_SIZE:
         raise HTTPException(status_code=413, detail="Imagem maior que 2 MB")
+
+    buf = bytearray()
+    while chunk := await file.read(1024 * 1024):
+        buf.extend(chunk)
+        if len(buf) > MAX_AVATAR_SIZE:
+            raise HTTPException(status_code=413, detail="Imagem maior que 2 MB")
+    data = bytes(buf)
+
+    # A-3: valida assinatura mágica
+    if not _avatar_magic_ok(data, file.content_type):
+        raise HTTPException(status_code=415, detail="Conteúdo não corresponde a uma imagem válida.")
 
     result = await db.execute(select(User).where(User.id == _uuid.UUID(current["user_id"])))
     user = result.scalar_one_or_none()
@@ -100,7 +135,14 @@ async def upload_avatar(
     if user.avatar_url:
         storage.delete_file(user.avatar_url)
 
-    key = storage.upload_file(f"avatars/{current['user_id']}{_ext(file.filename)}", data, file.content_type)
+    # A-3: prefixo controlado pelo servidor (não sanitizado) + extensão validada
+    ext = _ext(file.filename)
+    key = storage.upload_file(
+        f"{current['user_id']}{ext}",
+        data,
+        file.content_type,
+        prefix="avatars",
+    )
     user.avatar_url = key
     await db.commit()
     await db.refresh(user)

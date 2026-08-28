@@ -1,4 +1,5 @@
 import uuid
+import logging
 from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
@@ -15,6 +16,7 @@ import notif_helper
 router = APIRouter(prefix="/help", tags=["help"])
 any_user = require_user()
 only_admin = require_user(required_role="admin")
+logger = logging.getLogger(__name__)
 
 VALID_STATUS = {"aberto", "em_andamento", "resolvido", "fechado"}
 MAX_ANEXOS = 5
@@ -47,6 +49,7 @@ def _resolve_anexos(keys: list[str] | None) -> list[dict]:
         try:
             url = storage.get_presigned_url(k)
         except Exception:
+            logger.exception("Falha ao gerar URL pré-assinada para anexo %s", k)
             url = None
         lower = k.lower()
         is_image = any(lower.endswith(ext) for ext in (".jpg", ".jpeg", ".png", ".webp"))

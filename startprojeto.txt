@@ -5,7 +5,7 @@ docker compose up --build
 
 Acesse: http://localhost
 Backend: http://localhost:8000
-MinIO console: http://localhost:9001 (minioadmin / minioadmin)
+MinIO console: http://localhost:9001 (credenciais definidas no .env)
 
 
 ## Criar primeiro admin (se não usar o formulário na tela de login)

@@ -1,4 +1,4 @@
-const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+const BASE_URL = import.meta.env.VITE_API_URL || ''
 
 let _getMsal = null
 export function setMsalGetter(fn) { _getMsal = fn }
@@ -8,7 +8,7 @@ export function saveLocalToken(token) { localStorage.setItem(LOCAL_TOKEN_KEY, to
 export function clearLocalToken() { localStorage.removeItem(LOCAL_TOKEN_KEY) }
 export function getLocalToken() { return localStorage.getItem(LOCAL_TOKEN_KEY) }
 
-async function getToken() {
+export async function getToken() {
   const local = localStorage.getItem(LOCAL_TOKEN_KEY)
   if (local) return local
   const msal = _getMsal?.()
@@ -82,7 +82,7 @@ async function downloadRequest(method, path) {
 export const api = {
   auth: {
     me: () => request('GET', '/api/auth/me'),
-    changePassword: (nova_senha) => request('POST', '/api/auth/change-password', { nova_senha }),
+    changePassword: (senha_atual, nova_senha) => request('POST', '/api/auth/change-password', { senha_atual, nova_senha }),
     login: (email, password) =>
       fetch(`${BASE_URL}/api/auth/login`, {
         method: 'POST',
