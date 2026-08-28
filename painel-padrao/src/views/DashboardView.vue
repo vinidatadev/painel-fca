@@ -69,9 +69,24 @@
           Minha Fila
           <span class="count-badge">{{ filaBuscaFiltrada.length }}</span>
         </h2>
-        <div class="search-wrap">
-          <svg class="search-icon" width="15" height="15" viewBox="0 0 15 15" fill="none"><circle cx="6.5" cy="6.5" r="4.5" stroke="currentColor" stroke-width="1.4"/><path d="M10 10l2.5 2.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
-          <input v-model="filaBusca" type="text" placeholder="Filtrar por código, causa, área..." class="input-search" />
+        <div class="fila-tools">
+          <div class="colunas-wrap">
+            <button type="button" class="btn btn-secondary btn-sm" @click="showColunasMenu = !showColunasMenu">
+              <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><rect x="2" y="2" width="3" height="3" rx="1" stroke="currentColor" stroke-width="1.4"/><rect x="7" y="2" width="3" height="3" rx="1" stroke="currentColor" stroke-width="1.4"/><rect x="12" y="2" width="3" height="3" rx="1" stroke="currentColor" stroke-width="1.4"/><rect x="2" y="7" width="3" height="3" rx="1" stroke="currentColor" stroke-width="1.4"/><rect x="7" y="7" width="3" height="3" rx="1" stroke="currentColor" stroke-width="1.4"/><rect x="12" y="7" width="3" height="3" rx="1" stroke="currentColor" stroke-width="1.4"/><rect x="2" y="12" width="3" height="3" rx="1" stroke="currentColor" stroke-width="1.4"/><rect x="7" y="12" width="3" height="3" rx="1" stroke="currentColor" stroke-width="1.4"/><rect x="12" y="12" width="3" height="3" rx="1" stroke="currentColor" stroke-width="1.4"/></svg>
+              Colunas
+            </button>
+            <div v-if="showColunasMenu" class="colunas-menu" @click.stop>
+              <p class="colunas-menu-title">Colunas da Minha Fila</p>
+              <label v-for="c in COLUNAS" :key="c.key" class="colunas-opt">
+                <input type="checkbox" :checked="colunasVisiveis.includes(c.key)" @change="toggleColuna(c.key)" />
+                <span>{{ c.label }}</span>
+              </label>
+            </div>
+          </div>
+          <div class="search-wrap">
+            <svg class="search-icon" width="15" height="15" viewBox="0 0 15 15" fill="none"><circle cx="6.5" cy="6.5" r="4.5" stroke="currentColor" stroke-width="1.4"/><path d="M10 10l2.5 2.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+            <input v-model="filaBusca" type="text" placeholder="Filtrar por código, causa, área..." class="input-search" />
+          </div>
         </div>
       </div>
 
@@ -95,20 +110,26 @@
         <table class="fca-table">
           <thead>
             <tr>
-              <th>Código</th><th>Causa</th><th>Área Causadora</th><th>UF da Remessa</th><th>Status</th><th>SLA</th><th></th>
+              <th v-if="colunasVisiveis.includes('cod_fca')">Código</th>
+              <th v-if="colunasVisiveis.includes('causa')">Causa</th>
+              <th v-if="colunasVisiveis.includes('area')">Área Causadora</th>
+              <th v-if="colunasVisiveis.includes('uf')">UF da Remessa</th>
+              <th v-if="colunasVisiveis.includes('status')">Status</th>
+              <th v-if="colunasVisiveis.includes('sla')">SLA</th>
+              <th></th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="(fca, idx) in filaBuscaFiltrada" :key="fca.id" :style="`animation-delay:${idx * 30}ms`" class="fade-in-up">
-              <td><strong class="code-text">{{ fca.cod_fca }}</strong></td>
-              <td>{{ fca.causa }}</td>
-              <td>
+              <td v-if="colunasVisiveis.includes('cod_fca')"><strong class="code-text">{{ fca.cod_fca }}</strong></td>
+              <td v-if="colunasVisiveis.includes('causa')">{{ fca.causa }}</td>
+              <td v-if="colunasVisiveis.includes('area')">
                 <span class="area-text">{{ fca.area_causadora }}</span>
                 <span class="empresa-text"> · {{ fca.empresa_causadora }}</span>
               </td>
-              <td><span class="uf-badge">{{ fca.uf }}</span></td>
-              <td><span :class="['badge', 'badge-' + fca.status]">{{ labelStatus(fca.status) }}</span></td>
-              <td>
+              <td v-if="colunasVisiveis.includes('uf')"><span class="uf-badge">{{ fca.uf }}</span></td>
+              <td v-if="colunasVisiveis.includes('status')"><span :class="['badge', 'badge-' + fca.status]">{{ labelStatus(fca.status) }}</span></td>
+              <td v-if="colunasVisiveis.includes('sla')">
                 <SlaBadge v-if="fca.etapa_atual?.sla_deadline" :deadline="fca.etapa_atual.sla_deadline" />
               </td>
               <td>
@@ -179,6 +200,42 @@ const loading = ref(true)
 const loadingMetricas = ref(true)
 const filaBusca = ref('')
 const agrupamento = ref('semana')
+const showColunasMenu = ref(false)
+
+const COLUNAS = [
+  { key: 'cod_fca', label: 'Código' },
+  { key: 'causa', label: 'Causa' },
+  { key: 'area', label: 'Área Causadora' },
+  { key: 'uf', label: 'UF da Remessa' },
+  { key: 'status', label: 'Status' },
+  { key: 'sla', label: 'SLA' },
+]
+const colunasVisiveis = ref(COLUNAS.map(c => c.key))
+const PREFS_KEY = 'dashboard_colunas'
+
+function toggleColuna(key) {
+  const i = colunasVisiveis.value.indexOf(key)
+  if (i >= 0) colunasVisiveis.value.splice(i, 1)
+  else colunasVisiveis.value.push(key)
+  salvarColunas()
+}
+
+async function salvarColunas() {
+  try { await api.perfil.setPrefs({ [PREFS_KEY]: colunasVisiveis.value }) }
+  catch (e) { console.error('Erro ao salvar colunas:', e) }
+}
+
+async function carregarColunas() {
+  try {
+    const { prefs } = await api.perfil.getPrefs()
+    const saved = prefs?.[PREFS_KEY]
+    if (Array.isArray(saved) && saved.length) {
+      colunasVisiveis.value = saved.filter(k => COLUNAS.some(c => c.key === k))
+    }
+  } catch (e) { console.error('Erro ao carregar colunas:', e) }
+}
+
+function fecharMenus() { showColunasMenu.value = false }
 
 const data = ref({
   minha_fila: { total: 0, itens: [] },
@@ -223,8 +280,8 @@ async function loadMetricas() {
 
 function setAgrupamento(val) { agrupamento.value = val; loadMetricas() }
 
-onMounted(() => { load(); registerWsListener?.(load) })
-onUnmounted(() => { registerWsListener?.(null) })
+onMounted(() => { carregarColunas(); load(); window.addEventListener('click', fecharMenus); registerWsListener?.(load) })
+onUnmounted(() => { window.removeEventListener('click', fecharMenus); registerWsListener?.(null) })
 
 function labelStatus(s) {
   return { aberto: 'Aberto', em_andamento: 'Em andamento', aguardando_devolutiva: 'Ag. devolutiva', encerrado: 'Encerrado' }[s] || s
@@ -271,6 +328,26 @@ function labelStatus(s) {
 
 /* Minha Fila */
 .fila-header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--space-3); margin-bottom: var(--space-4); }
+.fila-tools { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
+.colunas-wrap { position: relative; }
+.colunas-menu {
+  position: absolute; right: 0; top: calc(100% + 6px); z-index: 30;
+  background: #fff; border: 1px solid var(--color-neutral-200);
+  border-radius: var(--radius-md); box-shadow: var(--shadow-md);
+  padding: var(--space-3); min-width: 220px;
+  display: flex; flex-direction: column; gap: var(--space-2);
+}
+.colunas-menu-title {
+  font-size: var(--font-size-xs); font-weight: var(--font-weight-semibold);
+  color: var(--color-neutral-500); text-transform: uppercase; letter-spacing: .04em;
+  margin: 0 0 var(--space-1) 0;
+}
+.colunas-opt {
+  display: flex; align-items: center; gap: var(--space-2);
+  font-size: var(--font-size-sm); color: var(--color-neutral-700);
+  cursor: pointer; padding: 4px 0;
+}
+.colunas-opt input { accent-color: var(--color-primary-500); width: 15px; height: 15px; cursor: pointer; }
 .count-badge {
   background: var(--color-primary-100); color: var(--color-primary-700);
   border-radius: var(--radius-full); padding: 2px var(--space-2);

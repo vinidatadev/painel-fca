@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime, timezone
 from sqlalchemy import String, Boolean, DateTime, Integer, BigInteger, Text, ForeignKey, ARRAY
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import UUID, JSONB
 from database import Base
 
 
@@ -276,3 +276,24 @@ class OnboardingProgresso(Base):
     )
 
     video: Mapped["OnboardingVideo"] = relationship("OnboardingVideo", back_populates="progressos")
+
+
+class UserPref(Base):
+    """Preferências de interface do usuário (ex: colunas visíveis do dashboard).
+
+    Armazena um JSON livre por usuário (1 linha por user). Usado para salvar
+    preferências como as colunas escolhidas na tabela "Minha Fila".
+    """
+    __tablename__ = "user_prefs"
+
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
+    )
+    prefs: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
+
+    user: Mapped["User"] = relationship("User", foreign_keys=[user_id])

@@ -282,6 +282,14 @@ async def lifespan(app: FastAPI):
         await conn.execute(_sql(
             "CREATE INDEX IF NOT EXISTS ix_onboarding_progressos_user_id ON onboarding_progressos(user_id)"
         ))
+        # Preferências de usuário (ex: colunas visíveis no dashboard)
+        await conn.execute(_sql(
+            "CREATE TABLE IF NOT EXISTS user_prefs ("
+            "    user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,"
+            "    prefs JSONB NOT NULL DEFAULT '{}'::jsonb,"
+            "    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()"
+            ")"
+        ))
         # Remove coluna legada anexo_key se existir
         await conn.execute(_sql("""
             DO $$

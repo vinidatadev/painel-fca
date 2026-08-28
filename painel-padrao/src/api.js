@@ -177,6 +177,8 @@ export const api = {
     update: (data) => request('PATCH', '/api/perfil/', data),
     uploadAvatar: (file) => uploadRequest('/api/perfil/avatar', file),
     deleteAvatar: () => request('DELETE', '/api/perfil/avatar'),
+    getPrefs: () => request('GET', '/api/perfil/prefs'),
+    setPrefs: (prefs) => request('PUT', '/api/perfil/prefs', { prefs }),
   },
 
   sla: {

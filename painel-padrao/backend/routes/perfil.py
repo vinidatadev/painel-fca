@@ -165,6 +165,44 @@ async def delete_avatar(
     return _to_out(user)
 
 
+class PrefsUpdate(BaseModel):
+    prefs: dict
+
+
+@router.get("/prefs")
+async def get_prefs(
+    current: dict = Depends(any_user),
+    db: AsyncSession = Depends(get_db),
+):
+    from models import UserPref
+    import uuid as _uuid
+    result = await db.execute(
+        select(UserPref).where(UserPref.user_id == _uuid.UUID(current["user_id"]))
+    )
+    pref = result.scalar_one_or_none()
+    return {"prefs": pref.prefs if pref else {}}
+
+
+@router.put("/prefs")
+async def set_prefs(
+    body: PrefsUpdate,
+    current: dict = Depends(any_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Salva preferências de interface do usuário (upsert por user)."""
+    from models import UserPref
+    import uuid as _uuid
+    uid = _uuid.UUID(current["user_id"])
+    result = await db.execute(select(UserPref).where(UserPref.user_id == uid))
+    pref = result.scalar_one_or_none()
+    if pref:
+        pref.prefs = body.prefs
+    else:
+        db.add(UserPref(user_id=uid, prefs=body.prefs))
+    await db.commit()
+    return {"prefs": body.prefs}
+
+
 def _to_out(u: User) -> PerfilOut:
     return PerfilOut(
         id=str(u.id), name=u.name, email=u.email,
