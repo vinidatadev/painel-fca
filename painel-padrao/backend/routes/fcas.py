@@ -167,6 +167,11 @@ class FCADetail(BaseModel):
     empresa_solicitante: str
     area_causadora: str
     empresa_causadora: str
+    apontar_causa_setor: str | None
+    apontar_causa_empresa: str | None
+    apontar_causa_detalhe: str | None
+    apontar_causa_por: dict | None
+    apontar_causa_at: str | None
     status: str
     created_by: dict
     created_at: str
@@ -193,6 +198,14 @@ class FCADetail(BaseModel):
             empresa_solicitante=fca.empresa_solicitante,
             area_causadora=fca.area_causadora,
             empresa_causadora=fca.empresa_causadora,
+            apontar_causa_setor=fca.apontar_causa_setor,
+            apontar_causa_empresa=fca.apontar_causa_empresa,
+            apontar_causa_detalhe=fca.apontar_causa_detalhe,
+            apontar_causa_por=(
+                {"id": str(fca.apontador_user.id), "name": fca.apontador_user.name}
+                if fca.apontador_user else None
+            ),
+            apontar_causa_at=fca.apontar_causa_at.isoformat() if fca.apontar_causa_at else None,
             status=fca.status,
             created_by={"id": str(fca.criado_por_user.id), "name": fca.criado_por_user.name},
             created_at=fca.created_at.isoformat(),
@@ -226,6 +239,12 @@ class ResponderBody(BaseModel):
     problema_solucionado: bool
     devolutiva: str = Field(..., min_length=1)
     encaminhar: list[EncaminharItem] = []
+
+
+class ApontarCausaBody(BaseModel):
+    setor: str = Field(..., min_length=1)
+    empresa: str = Field(..., min_length=1)
+    detalhe: str | None = None
 
 
 # ── Rotas ─────────────────────────────────────────────────────────────────────
@@ -547,7 +566,8 @@ async def get_fca(
         select(FCA)
         .options(
             selectinload(FCA.etapas).selectinload(FCAEtapa.respondido_por_user),
-            selectinload(FCA.criado_por_user)
+            selectinload(FCA.criado_por_user),
+            selectinload(FCA.apontador_user),
         )
         .where(FCA.id == fca_id)
     )
@@ -726,6 +746,57 @@ async def encerrar_fca(
     )
     await db.commit()
     return {"fca_status": "encerrado"}
+
+
+@router.post("/{fca_id}/apontar-causa")
+async def apontar_causa(
+    fca_id: UUID,
+    body: ApontarCausaBody,
+    db: AsyncSession = Depends(get_db),
+    current: dict = Depends(any_user),
+):
+    """Registra outro setor causador do FCA (apenas informação, não encaminha).
+
+    Só o setor/empresa da etapa ativa (que está tratando) pode apontar.
+    Se já houver apontamento, atualiza o registro existente.
+    """
+    result = await db.execute(
+        select(FCA).options(selectinload(FCA.etapas)).where(FCA.id == fca_id)
+    )
+    fca = result.scalar_one_or_none()
+    if not fca:
+        raise HTTPException(status_code=404, detail="FCA não encontrado")
+    if not _can_view(fca, fca.etapas, current):
+        raise HTTPException(status_code=403, detail="Acesso negado a este FCA")
+
+    etapa_atual = _etapa_ativa(fca.etapas)
+    if not etapa_atual:
+        raise HTTPException(status_code=409, detail="Não há etapa ativa neste FCA")
+    if etapa_atual.setor != current["sector"] or etapa_atual.empresa != current["company"]:
+        raise HTTPException(status_code=403, detail="Não é a vez do seu setor neste FCA")
+
+    if not validate_company_sector(body.empresa, body.setor):
+        raise HTTPException(status_code=422, detail=f"Setor/empresa inválido: {body.setor} + {body.empresa}")
+
+    now = datetime.now(timezone.utc)
+    fca.apontar_causa_setor = body.setor
+    fca.apontar_causa_empresa = body.empresa
+    fca.apontar_causa_detalhe = body.detalhe
+    fca.apontar_causa_por = uuid.UUID(current["user_id"])
+    fca.apontar_causa_at = now
+    await db.commit()
+
+    from models import AuditLog
+    db.add(AuditLog(
+        fca_id=fca.id,
+        usuario_id=uuid.UUID(current["user_id"]),
+        acao="apontar_causa",
+        detalhe=f"setor={body.setor} empresa={body.empresa}",
+    ))
+    await db.commit()
+
+    await manager.broadcast("fca_updated", destinatarios=_destinatarios_fca(fca))
+    return {"ok": True}
 
 
 # ── Schemas para novos endpoints ──────────────────────────────────────────────

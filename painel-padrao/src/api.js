@@ -118,6 +118,7 @@ export const api = {
     create: (data) => request('POST', '/api/fcas/', data),
     responder: (id, data) => request('POST', `/api/fcas/${id}/responder`, data),
     encerrar: (id) => request('POST', `/api/fcas/${id}/encerrar`),
+    apontarCausa: (id, data) => request('POST', `/api/fcas/${id}/apontar-causa`, data),
     export: (params = {}, format = 'xlsx') => {
       const q = new URLSearchParams(Object.fromEntries(Object.entries(params).filter(([, v]) => v !== undefined && v !== null && v !== '')))
       return downloadRequest('GET', `/api/fcas/export?format=${format}&${q}`)

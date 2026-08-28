@@ -148,6 +148,48 @@
         </form>
       </div>
 
+      <!-- Apontar Causa -->
+      <div v-if="minhaVez" class="card apontar-card" style="margin-top:var(--space-4)">
+        <div class="resposta-header">
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M3 5h12M3 9h12M3 13h7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+          <span>Apontar Causa</span>
+        </div>
+        <p class="apontar-desc">Registre outro setor causador deste FCA. É apenas informação para análise — não encaminha o FCA.</p>
+
+        <div v-if="fca.apontar_causa_setor && !showApontar" class="apontar-salvo">
+          <p><strong>Setor apontado:</strong> {{ fca.apontar_causa_setor }} · {{ fca.apontar_causa_empresa }}</p>
+          <p v-if="fca.apontar_causa_detalhe"><strong>Detalhe:</strong> {{ fca.apontar_causa_detalhe }}</p>
+          <p class="tl-meta-resp">Apontado por {{ fca.apontar_causa_por?.name || '—' }} em {{ formatDate(fca.apontar_causa_at) }}</p>
+          <button class="btn btn-secondary btn-sm" @click="editarApontar">✎ Editar</button>
+        </div>
+
+        <button v-else-if="!showApontar" class="btn btn-outline btn-sm" @click="abrirApontar">+ Apontar Causa</button>
+
+        <form v-else @submit.prevent="apontarCausa" class="apontar-form">
+          <div class="enc-row">
+            <select v-model="apontar.setor" required @change="apontar.empresa = ''">
+              <option value="">Setor causador...</option>
+              <option v-for="s in SETORES_ENC" :key="s" :value="s">{{ s }}</option>
+            </select>
+            <select v-model="apontar.empresa" required :disabled="!apontar.setor">
+              <option value="">Empresa...</option>
+              <option v-for="e in empresasParaSetor(apontar.setor)" :key="e" :value="e">{{ e }}</option>
+            </select>
+          </div>
+          <div class="form-group" style="margin-top:var(--space-3)">
+            <label>Detalhe</label>
+            <textarea v-model="apontar.detalhe" rows="3" placeholder="Detalhe do apontamento (opcional)..."></textarea>
+          </div>
+          <p v-if="errorApontar" class="error-msg">{{ errorApontar }}</p>
+          <div class="apontar-actions">
+            <button class="btn btn-primary btn-sm" type="submit" :disabled="subApontar || !apontar.setor || !apontar.empresa">
+              {{ subApontar ? 'Salvando...' : 'Salvar' }}
+            </button>
+            <button type="button" class="btn btn-secondary btn-sm" @click="cancelarApontar">Cancelar</button>
+          </div>
+        </form>
+      </div>
+
       <!-- Encerrar -->
       <div v-if="podeEncerrar" class="card encerrar-card" style="margin-top:var(--space-4)">
         <div class="encerrar-icon">
@@ -293,6 +335,7 @@ const subEncerrar    = ref(false); const errorEncerrar  = ref('')
 const comentarios    = ref([]); const novoComentario = ref(''); const subComentario = ref(false); const errorComentario = ref('')
 const showReabrir    = ref(false); const reabrirBody = ref({ setor: '', empresa: '' }); const subReabrir = ref(false); const errorReabrir = ref('')
 const showReatribuir = ref(false); const reatribuirBody = ref({ setor: '', empresa: '', justificativa: '' }); const subReatribuir = ref(false); const errorReatribuir = ref('')
+const showApontar    = ref(false); const apontar = ref({ setor: '', empresa: '', detalhe: '' }); const subApontar = ref(false); const errorApontar = ref('')
 const showAudit      = ref(false); const auditLogs = ref([]); const loadingAudit = ref(false)
 const showCancelar   = ref(false); const cancelarMotivo = ref(''); const subCancelar = ref(false); const errorCancelar = ref('')
 
@@ -327,6 +370,27 @@ const filaFutura = computed(() => {
 
 function addEnc() { resposta.value.encaminhar.push({ setor: '', empresa: '' }) }
 function removeEnc(i) { resposta.value.encaminhar.splice(i, 1) }
+
+function abrirApontar() { apontar.value = { setor: '', empresa: '', detalhe: '' }; showApontar.value = true }
+function editarApontar() {
+  apontar.value = {
+    setor: fca.value.apontar_causa_setor || '',
+    empresa: fca.value.apontar_causa_empresa || '',
+    detalhe: fca.value.apontar_causa_detalhe || '',
+  }
+  showApontar.value = true
+}
+function cancelarApontar() { showApontar.value = false }
+async function apontarCausa() {
+  errorApontar.value = ''
+  if (!apontar.value.setor || !apontar.value.empresa) { errorApontar.value = 'Preencha o setor e a empresa.'; return }
+  subApontar.value = true
+  try {
+    await api.fcas.apontarCausa(fca.value.id, { ...apontar.value })
+    showApontar.value = false
+    await loadFca()
+  } catch (e) { errorApontar.value = e.message } finally { subApontar.value = false }
+}
 
 async function abrirAnexo(key) {
   loadingAnexo.value = true
@@ -474,6 +538,13 @@ function formatDate(iso) { if (!iso) return '—'; return new Date(iso).toLocale
 .enc-row { display: flex; gap: var(--space-2); align-items: center; }
 .enc-row select { flex: 1; padding: var(--space-2) var(--space-3); border: 1.5px solid var(--color-neutral-300); border-radius: var(--radius-md); font-size: var(--font-size-sm); font-family: var(--font-family-base); outline: none; }
 .enc-row select:focus { border-color: var(--color-primary-500); }
+
+/* Apontar Causa */
+.apontar-card { border: 1px solid var(--color-neutral-200); border-left: 4px solid var(--color-purple); padding: 0; overflow: hidden; }
+.apontar-desc { font-size: var(--font-size-xs); color: var(--color-neutral-500); margin: var(--space-3) var(--space-4); }
+.apontar-salvo { padding: var(--space-1) var(--space-4) var(--space-4); font-size: var(--font-size-sm); display: flex; flex-direction: column; gap: var(--space-2); align-items: flex-start; }
+.apontar-form { padding: var(--space-1) var(--space-4) var(--space-4); }
+.apontar-actions { display: flex; gap: var(--space-2); margin-top: var(--space-4); }
 
 /* Encerrar */
 .encerrar-card {

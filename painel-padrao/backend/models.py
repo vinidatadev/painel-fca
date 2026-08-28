@@ -82,6 +82,11 @@ class FCA(Base):
     empresa_solicitante: Mapped[str] = mapped_column(String(20), nullable=False)
     area_causadora: Mapped[str] = mapped_column(String(30), nullable=False)
     empresa_causadora: Mapped[str] = mapped_column(String(20), nullable=False)
+    apontar_causa_setor: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    apontar_causa_empresa: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    apontar_causa_detalhe: Mapped[str | None] = mapped_column(Text, nullable=True)
+    apontar_causa_por: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    apontar_causa_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     status: Mapped[str] = mapped_column(String(25), nullable=False, default="aberto")
     created_by: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
     created_at: Mapped[datetime] = mapped_column(
@@ -94,6 +99,7 @@ class FCA(Base):
     )
 
     criado_por_user: Mapped["User"] = relationship("User", back_populates="fcas_criados", foreign_keys=[created_by])
+    apontador_user: Mapped["User | None"] = relationship("User", foreign_keys=[apontar_causa_por])
     etapas: Mapped[list["FCAEtapa"]] = relationship("FCAEtapa", back_populates="fca", order_by="FCAEtapa.order_index")
 
 

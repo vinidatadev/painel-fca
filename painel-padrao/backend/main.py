@@ -192,6 +192,22 @@ async def lifespan(app: FastAPI):
         await conn.execute(_sql(
             "ALTER TABLE fcas ADD COLUMN IF NOT EXISTS subsetor_causador VARCHAR(100)"
         ))
+        # Apontar Causa: registro de outro setor causador (sem encaminhar)
+        await conn.execute(_sql(
+            "ALTER TABLE fcas ADD COLUMN IF NOT EXISTS apontar_causa_setor VARCHAR(30)"
+        ))
+        await conn.execute(_sql(
+            "ALTER TABLE fcas ADD COLUMN IF NOT EXISTS apontar_causa_empresa VARCHAR(20)"
+        ))
+        await conn.execute(_sql(
+            "ALTER TABLE fcas ADD COLUMN IF NOT EXISTS apontar_causa_detalhe TEXT"
+        ))
+        await conn.execute(_sql(
+            "ALTER TABLE fcas ADD COLUMN IF NOT EXISTS apontar_causa_por UUID"
+        ))
+        await conn.execute(_sql(
+            "ALTER TABLE fcas ADD COLUMN IF NOT EXISTS apontar_causa_at TIMESTAMPTZ"
+        ))
         # Correção: a coluna subcausa (nome errado) pode ter sido criada em algum
         # banco — remove para manter consistência.
         await conn.execute(_sql(
