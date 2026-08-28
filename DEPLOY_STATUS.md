@@ -4,26 +4,34 @@
 Sistema funcionando no servidor `<IP_SERVIDOR>` via Portainer com HTTPS (certificado autoassinado).
 
 ## Versões das Imagens Atuais
-- **Frontend**: `frontend-app:v8` (última versão estável)
-- **Backend**: `backend-app:v4` (última versão estável)
+- **Frontend**: `frontend-app:v9` (última versão estável — notificações com setor)
+- **Backend**: `backend-app:v5` (última versão estável — notificações com setor)
 
 ## Estrutura no Portainer
 ### Containers
 - **frontend** — nginx com Vue.js buildado
   - Porta: `3003:443` (HTTPS) e `3080:80` (redirect HTTP→HTTPS)
-  - Imagem: `frontend-app:v8`
+  - Imagem: `frontend-app:v9`
   - Rede: `app-network`
 
 - **backend** — FastAPI Python
   - Porta: `8003:8000` (interno, não exposto)
-  - Imagem: `backend-app:v4`
+  - Imagem: `backend-app:v5`
   - Rede: `app-network`
-  - ENVs importantes:
+  - ENVs importantes (OBRIGATÓRIAS — o backend falha no startup se faltarem):
+    - `JWT_SECRET`: segredo forte (mín. 16 chars, ex.: 64 hex)
+    - `AZURE_TENANT_ID`: 4f8fb8aa-7c76-4c81-82f5-24608f5a0b02
+    - `AZURE_CLIENT_ID`: 91d632dc-ddb3-4d01-a2cd-b1a4c6f8b056
+    - `MINIO_ACCESS_KEY`: access key do MinIO do servidor
+    - `MINIO_SECRET_KEY`: secret key do MinIO do servidor
     - `DATABASE_URL`: postgresql+asyncpg://admin:sua_senha_segura@<IP_SERVIDOR>:5432/meu_banco?sslmode=disable
     - `MINIO_ENDPOINT`: <IP_SERVIDOR>:9010
     - `MINIO_PUBLIC_URL`: https://<IP_SERVIDOR>:3003
     - `FRONTEND_URL`: https://<IP_SERVIDOR>:3003
     - `ALLOWED_ORIGINS`: https://<IP_SERVIDOR>:3003
+    - `MINIO_BUCKET`: fca-anexos
+    - Opcionais: SMTP_HOST/PORT/USER/PASS, FCA_TIMEOUT_HORAS (padrão 72)
+  - Obs.: a imagem backend **não embute `.env`** — configure as ENVs acima no container.
 
 ### Stacks
 - **minio-cs** — MinIO S3-compatible storage
