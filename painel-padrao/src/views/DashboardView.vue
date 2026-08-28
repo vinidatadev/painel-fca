@@ -81,6 +81,10 @@
                 <input type="checkbox" :checked="colunasVisiveis.includes(c.key)" @change="toggleColuna(c.key)" />
                 <span>{{ c.label }}</span>
               </label>
+              <div class="colunas-actions">
+                <button type="button" class="btn btn-primary btn-sm" @click="salvarColunas">Salvar</button>
+                <button type="button" class="btn btn-secondary btn-sm" @click="cancelarColunas">Cancelar</button>
+              </div>
             </div>
           </div>
           <div class="search-wrap">
@@ -114,6 +118,12 @@
               <th v-if="colunasVisiveis.includes('causa')">Causa</th>
               <th v-if="colunasVisiveis.includes('area')">Área Causadora</th>
               <th v-if="colunasVisiveis.includes('uf')">UF da Remessa</th>
+              <th v-if="colunasVisiveis.includes('remessas')">Remessa(s)</th>
+              <th v-if="colunasVisiveis.includes('dts')">DT</th>
+              <th v-if="colunasVisiveis.includes('cod_materiais')">Cod Material</th>
+              <th v-if="colunasVisiveis.includes('ordens_venda')">Ordem de Venda</th>
+              <th v-if="colunasVisiveis.includes('criado_por')">Criado por</th>
+              <th v-if="colunasVisiveis.includes('criado_em')">Criado em</th>
               <th v-if="colunasVisiveis.includes('status')">Status</th>
               <th v-if="colunasVisiveis.includes('sla')">SLA</th>
               <th></th>
@@ -128,6 +138,12 @@
                 <span class="empresa-text"> · {{ fca.empresa_causadora }}</span>
               </td>
               <td v-if="colunasVisiveis.includes('uf')"><span class="uf-badge">{{ fca.uf }}</span></td>
+              <td v-if="colunasVisiveis.includes('remessas')"><span class="muted-cell">{{ fca.remessas?.length ? fca.remessas.join(', ') : '—' }}</span></td>
+              <td v-if="colunasVisiveis.includes('dts')"><span class="muted-cell">{{ fca.dts?.length ? fca.dts.join(', ') : '—' }}</span></td>
+              <td v-if="colunasVisiveis.includes('cod_materiais')"><span class="muted-cell">{{ fca.cod_materiais?.length ? fca.cod_materiais.join(', ') : '—' }}</span></td>
+              <td v-if="colunasVisiveis.includes('ordens_venda')"><span class="muted-cell">{{ fca.ordens_venda?.length ? fca.ordens_venda.join(', ') : '—' }}</span></td>
+              <td v-if="colunasVisiveis.includes('criado_por')"><span class="muted-cell">{{ fca.criado_por || '—' }}</span></td>
+              <td v-if="colunasVisiveis.includes('criado_em')"><span class="muted-cell">{{ formatDate(fca.created_at) }}</span></td>
               <td v-if="colunasVisiveis.includes('status')"><span :class="['badge', 'badge-' + fca.status]">{{ labelStatus(fca.status) }}</span></td>
               <td v-if="colunasVisiveis.includes('sla')">
                 <SlaBadge v-if="fca.etapa_atual?.sla_deadline" :deadline="fca.etapa_atual.sla_deadline" />
@@ -207,22 +223,35 @@ const COLUNAS = [
   { key: 'causa', label: 'Causa' },
   { key: 'area', label: 'Área Causadora' },
   { key: 'uf', label: 'UF da Remessa' },
+  { key: 'remessas', label: 'Remessa(s)' },
+  { key: 'dts', label: 'DT' },
+  { key: 'cod_materiais', label: 'Cod Material' },
+  { key: 'ordens_venda', label: 'Ordem de Venda' },
+  { key: 'criado_por', label: 'Criado por' },
+  { key: 'criado_em', label: 'Criado em' },
   { key: 'status', label: 'Status' },
   { key: 'sla', label: 'SLA' },
 ]
 const colunasVisiveis = ref(COLUNAS.map(c => c.key))
+const colunasSalvas = ref([])
 const PREFS_KEY = 'dashboard_colunas'
 
 function toggleColuna(key) {
   const i = colunasVisiveis.value.indexOf(key)
   if (i >= 0) colunasVisiveis.value.splice(i, 1)
   else colunasVisiveis.value.push(key)
-  salvarColunas()
 }
 
 async function salvarColunas() {
-  try { await api.perfil.setPrefs({ [PREFS_KEY]: colunasVisiveis.value }) }
+  showColunasMenu.value = false
+  colunasSalvas.value = [...colunasVisiveis.value]
+  try { await api.perfil.setPrefs({ [PREFS_KEY]: colunasSalvas.value }) }
   catch (e) { console.error('Erro ao salvar colunas:', e) }
+}
+
+function cancelarColunas() {
+  colunasVisiveis.value = [...colunasSalvas.value]
+  showColunasMenu.value = false
 }
 
 async function carregarColunas() {
@@ -230,10 +259,18 @@ async function carregarColunas() {
     const { prefs } = await api.perfil.getPrefs()
     const saved = prefs?.[PREFS_KEY]
     if (Array.isArray(saved) && saved.length) {
-      colunasVisiveis.value = saved.filter(k => COLUNAS.some(c => c.key === k))
+      colunasSalvas.value = saved.filter(k => COLUNAS.some(c => c.key === k))
+    } else {
+      colunasSalvas.value = COLUNAS.map(c => c.key)
     }
-  } catch (e) { console.error('Erro ao carregar colunas:', e) }
+  } catch (e) {
+    console.error('Erro ao carregar colunas:', e)
+    colunasSalvas.value = COLUNAS.map(c => c.key)
+  }
+  colunasVisiveis.value = [...colunasSalvas.value]
 }
+
+function formatDate(iso) { return iso ? new Date(iso).toLocaleDateString('pt-BR') : '—' }
 
 function fecharMenus() { showColunasMenu.value = false }
 
@@ -348,6 +385,8 @@ function labelStatus(s) {
   cursor: pointer; padding: 4px 0;
 }
 .colunas-opt input { accent-color: var(--color-primary-500); width: 15px; height: 15px; cursor: pointer; }
+.colunas-actions { display: flex; gap: var(--space-2); margin-top: var(--space-2); padding-top: var(--space-2); border-top: 1px solid var(--color-neutral-100); }
+.muted-cell { color: var(--color-neutral-500); font-size: var(--font-size-xs); }
 .count-badge {
   background: var(--color-primary-100); color: var(--color-primary-700);
   border-radius: var(--radius-full); padding: 2px var(--space-2);

@@ -20,7 +20,7 @@ async def dashboard(
     # FCAs onde é a vez do setor do usuário
     minha_fila_q = (
         select(FCA)
-        .options(selectinload(FCA.etapas))
+        .options(selectinload(FCA.etapas), selectinload(FCA.criado_por_user))
         .join(FCAEtapa, FCAEtapa.fca_id == FCA.id)
         .where(
             FCAEtapa.setor == current["sector"],
@@ -36,7 +36,7 @@ async def dashboard(
         # Admin vê todos os pendentes
         minha_fila_q = (
             select(FCA)
-            .options(selectinload(FCA.etapas))
+            .options(selectinload(FCA.etapas), selectinload(FCA.criado_por_user))
             .join(FCAEtapa, FCAEtapa.fca_id == FCA.id)
             .where(FCAEtapa.status.in_(["pendente", "em_andamento"]))
             .distinct()
@@ -53,6 +53,9 @@ async def dashboard(
              if e.status in ("pendente", "em_andamento")),
             None
         )
+        criador_nome = None
+        if fca.criado_por_user:
+            criador_nome = fca.criado_por_user.name
         minha_fila_items.append({
             "id": str(fca.id),
             "cod_fca": fca.cod_fca,
@@ -60,6 +63,11 @@ async def dashboard(
             "area_causadora": fca.area_causadora,
             "empresa_causadora": fca.empresa_causadora,
             "uf": fca.uf,
+            "remessas": fca.remessas or [],
+            "dts": fca.dts or [],
+            "cod_materiais": fca.cod_materiais or [],
+            "ordens_venda": fca.ordens_venda or [],
+            "criado_por": criador_nome,
             "status": fca.status,
             "etapa_atual": {
                 "setor": etapa.setor,
