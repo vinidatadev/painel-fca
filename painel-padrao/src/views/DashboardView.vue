@@ -156,7 +156,9 @@
                 <SlaBadge v-if="fca.etapa_atual?.sla_deadline" :deadline="fca.etapa_atual.sla_deadline" />
               </td>
               <td>
-                <RouterLink :to="`/fca/${fca.id}`" class="btn btn-primary btn-sm">Tratar</RouterLink>
+                <RouterLink :to="`/fca/${fca.id}`" :class="['btn btn-sm', eMinhaVez(fca) ? 'btn-primary' : 'btn-warning']">
+                  {{ eMinhaVez(fca) ? 'Tratar' : 'Acompanhar' }}
+                </RouterLink>
               </td>
             </tr>
           </tbody>
@@ -219,6 +221,7 @@ import SlaBadge from '../components/SlaBadge.vue'
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend)
 
 const registerWsListener = inject('registerWsListener')
+const user = inject('user')
 const loading = ref(true)
 const loadingMetricas = ref(true)
 const filaBusca = ref('')
@@ -280,6 +283,12 @@ async function carregarColunas() {
 }
 
 function formatDate(iso) { return iso ? new Date(iso).toLocaleDateString('pt-BR') : '—' }
+
+function eMinhaVez(f) {
+  return !!(user.value && f.etapa_atual &&
+    f.etapa_atual.setor === user.value.sector &&
+    f.etapa_atual.empresa === user.value.company)
+}
 
 function fecharMenus() { showColunasMenu.value = false }
 
