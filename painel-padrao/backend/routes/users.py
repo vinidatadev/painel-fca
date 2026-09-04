@@ -5,12 +5,31 @@ from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from database import get_db
-from models import User
+from models import User, OpcaoLista, AreaEmpresa
 from auth import hash_password, require_user
-from business import validate_company_sector, SECTORS_BY_COMPANY, COMPANIES
 
 router = APIRouter(prefix="/usuarios", tags=["usuarios"])
 admin_only = require_user(required_role="admin")
+
+
+async def _opcoes_ativas(db: AsyncSession, tipo: str) -> set[str]:
+    result = await db.execute(
+        select(OpcaoLista.valor).where(
+            OpcaoLista.tipo == tipo, OpcaoLista.ativo == True
+        )
+    )
+    return set(result.scalars().all())
+
+
+async def _combo_ativo(db: AsyncSession, area: str, empresa: str) -> bool:
+    result = await db.execute(
+        select(AreaEmpresa.id).where(
+            AreaEmpresa.area == area,
+            AreaEmpresa.empresa == empresa,
+            AreaEmpresa.ativo == True,
+        )
+    )
+    return result.scalar_one_or_none() is not None
 
 
 class UserOut(BaseModel):
@@ -91,10 +110,17 @@ async def create_user(
     db: AsyncSession = Depends(get_db),
     _: dict = Depends(admin_only)
 ):
-    if body.company not in COMPANIES:
+    empresas_ativas = await _opcoes_ativas(db, "empresa")
+    areas_ativas = await _opcoes_ativas(db, "area")
+    if body.company not in empresas_ativas:
         raise HTTPException(status_code=422, detail=f"Empresa inválida: {body.company}")
-    if not validate_company_sector(body.company, body.sector):
-        raise HTTPException(status_code=422, detail=f"Setor '{body.sector}' inválido para empresa '{body.company}'")
+    if body.sector not in areas_ativas:
+        raise HTTPException(status_code=422, detail=f"Setor '{body.sector}' inválido")
+    if not await _combo_ativo(db, body.sector, body.company):
+        raise HTTPException(
+            status_code=422,
+            detail=f"Combinação '{body.sector}' + '{body.company}' não permitida nas configurações",
+        )
 
     existing = await db.execute(select(User).where(User.email == body.email))
     if existing.scalar_one_or_none():
@@ -150,8 +176,17 @@ async def update_user(
     company = body.company or user.company
     sector = body.sector or user.sector
     if body.company or body.sector:
-        if not validate_company_sector(company, sector):
-            raise HTTPException(status_code=422, detail=f"Setor '{sector}' inválido para empresa '{company}'")
+        empresas_ativas = await _opcoes_ativas(db, "empresa")
+        areas_ativas = await _opcoes_ativas(db, "area")
+        if company not in empresas_ativas:
+            raise HTTPException(status_code=422, detail=f"Empresa inválida: {company}")
+        if sector not in areas_ativas:
+            raise HTTPException(status_code=422, detail=f"Setor '{sector}' inválido")
+        if not await _combo_ativo(db, sector, company):
+            raise HTTPException(
+                status_code=422,
+                detail=f"Combinação '{sector}' + '{company}' não permitida nas configurações",
+            )
 
     if body.name is not None:
         user.name = body.name

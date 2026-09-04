@@ -65,11 +65,12 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { api } from '../api'
 
-const EMPRESAS = ['ACI_MATRIZ', 'ACI_FILIAL', 'SINOBRAS', 'ACC']
-const SETORES  = ['ACL', 'PCP', 'Qualidade', 'MEP', 'Expedicao', 'Producao', 'Comercial', 'Customer_Service']
+const opcoes = ref({ empresas: [], areas: [], setores_por_empresa: {} })
+const EMPRESAS = computed(() => opcoes.value.empresas || [])
+const SETORES  = computed(() => opcoes.value.areas || [])
 
 const items   = ref([])
 const loading = ref(true)
@@ -112,7 +113,10 @@ async function toggleBiAccess(u) {
   }
 }
 
-onMounted(load)
+onMounted(async () => {
+  try { opcoes.value = await api.opcoes.get() } catch (e) { /* opções opcionais */ }
+  await load()
+})
 </script>
 
 <style scoped>

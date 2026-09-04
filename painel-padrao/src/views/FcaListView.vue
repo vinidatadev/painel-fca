@@ -29,7 +29,7 @@
         </select>
         <select v-model="filters.area_causadora" @change="load" class="filter-select">
           <option value="">Área causadora</option>
-          <option v-for="s in SETORES_AREA" :key="s" :value="s">{{ s }}</option>
+          <option v-for="s in areas" :key="s" :value="s">{{ s }}</option>
         </select>
         <div class="date-range">
           <input v-model.lazy="filters.data_inicio" type="date" @change="load" class="filter-date" />
@@ -154,7 +154,7 @@ import { api } from '../api'
 
 const user = inject('user')
 const registerWsListener = inject('registerWsListener')
-const SETORES_AREA = ['ACL', 'PCP', 'Qualidade', 'MEP', 'Expedicao', 'Producao', 'Comercial', 'Customer_Service']
+const areas = ref([])
 
 const items    = ref([])
 const total    = ref(0)
@@ -209,7 +209,13 @@ async function exportar(format) {
   finally { exporting.value = false }
 }
 
-onMounted(() => { load(); registerWsListener?.(load) })
+onMounted(async () => {
+  try {
+    const opcoes = await api.opcoes.get()
+    areas.value = opcoes.areas || []
+  } catch (e) { /* opções opcionais */ }
+  load(); registerWsListener?.(load)
+})
 onActivated(load)
 onUnmounted(() => { registerWsListener?.(null) })
 </script>

@@ -15,6 +15,18 @@ SECTORS_CAN_OPEN = ["ACL", "PCP", "Qualidade", "MEP", "Expedicao", "Comercial", 
 # Setores que recebem devolutiva
 SECTORS_WITH_RETURN = ["ACL", "Qualidade", "MEP", "Expedicao", "Customer_Service"]
 
+# Áreas (mesmo conceito de "setor") configuráveis — derivadas do mapeamento empresa→setores.
+# Usadas no formulário de FCA ("Área Causadora"), no perfil do usuário e na triagem.
+AREAS = sorted({s for setores in SECTORS_BY_COMPANY.values() for s in setores})
+
+# Vínculos padrão Área ↔ Empresa, derivados do mapeamento empresa→setores.
+# Servem apenas para semear a tabela areas_empresas — o admin gerencia depois
+# em Configurações → "Empresas por Área".
+DEFAULT_AREA_EMPRESAS: dict[str, list[str]] = {}
+for _empresa, _setores in SECTORS_BY_COMPANY.items():
+    for _setor in _setores:
+        DEFAULT_AREA_EMPRESAS.setdefault(_setor, []).append(_empresa)
+
 CAUSAS = [
     "Carro com problema mecânico",
     "Excesso de PBT",
@@ -45,37 +57,7 @@ UFS = [
     "RO","RR","RS","SC","SE","SP","TO",
 ]
 
-# Mapeamento triagem: (area_causadora, empresa_causadora) -> (setor, empresa)
-TRIAGEM: dict[tuple[str, str], tuple[str, str]] = {
-    ("ACL", "ACI_MATRIZ"):         ("ACL", "ACI_MATRIZ"),
-    ("ACL", "ACI_FILIAL"):         ("ACL", "ACI_FILIAL"),
-    ("ACL", "SINOBRAS"):           ("ACL", "SINOBRAS"),
-    ("Comercial", "ACC"):          ("Comercial", "ACC"),
-    ("PCP", "ACI_MATRIZ"):         ("PCP", "ACI_MATRIZ"),
-    ("PCP", "ACI_FILIAL"):         ("PCP", "ACI_FILIAL"),
-    ("PCP", "SINOBRAS"):           ("PCP", "SINOBRAS"),
-    ("Qualidade", "ACI_MATRIZ"):   ("Qualidade", "ACI_MATRIZ"),
-    ("Qualidade", "ACI_FILIAL"):   ("Qualidade", "ACI_FILIAL"),
-    ("Qualidade", "SINOBRAS"):     ("Qualidade", "SINOBRAS"),
-    ("MEP", "ACI_MATRIZ"):         ("MEP", "ACI_MATRIZ"),
-    ("MEP", "ACI_FILIAL"):         ("MEP", "ACI_FILIAL"),
-    ("MEP", "SINOBRAS"):           ("MEP", "SINOBRAS"),
-    ("Expedicao", "ACI_MATRIZ"):   ("Expedicao", "ACI_MATRIZ"),
-    ("Expedicao", "ACI_FILIAL"):   ("Expedicao", "ACI_FILIAL"),
-    ("Expedicao", "SINOBRAS"):     ("Expedicao", "SINOBRAS"),
-    ("Customer_Service", "ACC"):   ("Customer_Service", "ACC"),
-    ("Producao", "ACI_MATRIZ"):    ("Producao", "ACI_MATRIZ"),
-    ("Producao", "ACI_FILIAL"):    ("Producao", "ACI_FILIAL"),
-    ("Producao", "SINOBRAS"):      ("Producao", "SINOBRAS"),
-}
-
-
 def validate_company_sector(company: str, sector: str) -> bool:
     """Retorna True se a combinação empresa+setor é válida."""
     allowed = SECTORS_BY_COMPANY.get(company, [])
     return sector in allowed
-
-
-def get_triagem(area_causadora: str, empresa_causadora: str) -> tuple[str, str] | None:
-    """Retorna (setor, empresa) da primeira etapa ou None se combinação inválida."""
-    return TRIAGEM.get((area_causadora, empresa_causadora))

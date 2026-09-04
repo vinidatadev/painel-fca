@@ -18,7 +18,7 @@ from routes.users import router as users_router
 from routes.fcas import router as fcas_router
 from routes.upload import router as upload_router
 from routes.dashboard import router as dashboard_router
-from routes.opcoes import router as opcoes_router, seed_opcoes
+from routes.opcoes import router as opcoes_router, seed_opcoes, seed_areas_empresas
 from routes.sla import router as sla_router
 from routes.perfil import router as perfil_router
 from routes.help import router as help_router
@@ -344,6 +344,7 @@ async def lifespan(app: FastAPI):
         logger.warning("MinIO onboarding bucket indisponível no startup: %s", e)
     async with AsyncSessionLocal() as db:
         await seed_opcoes(db)
+        await seed_areas_empresas(db)
     asyncio.create_task(_timeout_job())
     asyncio.create_task(_storage_cleanup_job())
     yield

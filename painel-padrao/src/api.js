@@ -195,6 +195,14 @@ export const api = {
     create: (data) => request('POST', '/api/opcoes/', data),
     update: (id, data) => request('PUT', `/api/opcoes/${id}`, data),
     remove: (id) => request('DELETE', `/api/opcoes/${id}`),
+    areasEmpresas: () => request('GET', '/api/opcoes/areas-empresas'),
+    createAreaEmpresa: (data) => request('POST', '/api/opcoes/areas-empresas', data),
+    updateAreaEmpresa: (id, data) => request('PUT', `/api/opcoes/areas-empresas/${id}`, data),
+    removeAreaEmpresa: (id) => request('DELETE', `/api/opcoes/areas-empresas/${id}`),
+    dicasAdmin: () => request('GET', '/api/opcoes/dicas/admin'),
+    createDica: (data) => request('POST', '/api/opcoes/dicas', data),
+    updateDica: (id, data) => request('PUT', `/api/opcoes/dicas/${id}`, data),
+    removeDica: (id) => request('DELETE', `/api/opcoes/dicas/${id}`),
   },
 
   help: {

@@ -37,28 +37,28 @@
           </div>
           <div class="form-grid">
             <div class="form-group">
-              <label>Causa do FCA <span class="req">*</span></label>
+              <label>Causa do FCA <FieldInfo campo="causa" :dicas="opcoes.dicas" /> <span class="req">*</span></label>
               <select v-model="form.causa" required>
                 <option value="">Selecione...</option>
                 <option v-for="c in opcoes.causas" :key="c" :value="c">{{ c }}</option>
               </select>
             </div>
             <div class="form-group">
-              <label>Sub-Setor Causador</label>
-              <select v-model="form.subsetor_causador">
-                <option value="">Nenhum</option>
-                <option v-for="s in opcoes.subsetores_causadores" :key="s" :value="s">{{ s }}</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label>Área Causadora <span class="req">*</span></label>
+              <label>Área Causadora <FieldInfo campo="area_causadora" :dicas="opcoes.dicas" /> <span class="req">*</span></label>
               <select v-model="form.area_causadora" required @change="form.empresa_causadora = ''">
                 <option value="">Selecione...</option>
                 <option v-for="s in areasDisponiveis" :key="s" :value="s">{{ s }}</option>
               </select>
             </div>
             <div class="form-group">
-              <label>Empresa do Causador <span class="req">*</span></label>
+              <label>Sub-Setor Causador <FieldInfo campo="subsetor_causador" :dicas="opcoes.dicas" /></label>
+              <select v-model="form.subsetor_causador">
+                <option value="">Nenhum</option>
+                <option v-for="s in opcoes.subsetores_causadores" :key="s" :value="s">{{ s }}</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Empresa do Causador <FieldInfo campo="empresa_causadora" :dicas="opcoes.dicas" /> <span class="req">*</span></label>
               <select v-model="form.empresa_causadora" required :disabled="!form.area_causadora">
                 <option value="">Selecione...</option>
                 <option v-for="e in empresasParaArea" :key="e" :value="e">{{ e }}</option>
@@ -77,14 +77,14 @@
           </div>
           <div class="form-grid">
             <div class="form-group">
-              <label>Ação <span class="req">*</span></label>
+              <label>Ação <FieldInfo campo="acao" :dicas="opcoes.dicas" /> <span class="req">*</span></label>
               <select v-model="form.acao" required>
                 <option value="">Selecione...</option>
                 <option v-for="a in opcoes.acoes" :key="a" :value="a">{{ a }}</option>
               </select>
             </div>
             <div class="form-group">
-              <label>UF da Remessa <span class="req">*</span></label>
+              <label>UF da Remessa <FieldInfo campo="uf" :dicas="opcoes.dicas" /> <span class="req">*</span></label>
               <select v-model="form.uf" required>
                 <option value="">Selecione...</option>
                 <option v-for="u in opcoes.ufs" :key="u" :value="u">{{ u }}</option>
@@ -106,7 +106,7 @@
               <div class="remessas-list">
                 <div v-for="(_, i) in form.remessas" :key="'rem' + i" class="remessa-row">
                   <div class="form-group" style="flex:1">
-                    <label v-if="i === 0">Número(s) da Remessa</label>
+                    <label v-if="i === 0">Número(s) da Remessa <FieldInfo campo="remessas" :dicas="opcoes.dicas" /></label>
                     <input v-model.number="form.remessas[i]" type="number" placeholder="Ex: 83139570" />
                   </div>
                   <button v-if="form.remessas.length > 1" type="button" class="btn btn-secondary btn-sm remessa-remove" @click="removeItem('remessas', i)" style="margin-top:auto">
@@ -124,7 +124,7 @@
               <div class="remessas-list">
                 <div v-for="(_, i) in form.dts" :key="'dt' + i" class="remessa-row">
                   <div class="form-group" style="flex:1">
-                    <label v-if="i === 0">DT</label>
+                    <label v-if="i === 0">DT <FieldInfo campo="dts" :dicas="opcoes.dicas" /></label>
                     <input v-model.number="form.dts[i]" type="number" placeholder="Ex: 1204" />
                   </div>
                   <button v-if="form.dts.length > 1" type="button" class="btn btn-secondary btn-sm remessa-remove" @click="removeItem('dts', i)" style="margin-top:auto">
@@ -142,7 +142,7 @@
               <div class="remessas-list">
                 <div v-for="(_, i) in form.cod_materiais" :key="'cm' + i" class="remessa-row">
                   <div class="form-group" style="flex:1">
-                    <label v-if="i === 0">Cod Material</label>
+                    <label v-if="i === 0">Cod Material <FieldInfo campo="cod_materiais" :dicas="opcoes.dicas" /></label>
                     <input v-model.number="form.cod_materiais[i]" type="number" placeholder="Ex: 10023456" />
                   </div>
                   <button v-if="form.cod_materiais.length > 1" type="button" class="btn btn-secondary btn-sm remessa-remove" @click="removeItem('cod_materiais', i)" style="margin-top:auto">
@@ -160,7 +160,7 @@
               <div class="remessas-list">
                 <div v-for="(_, i) in form.ordens_venda" :key="'ov' + i" class="remessa-row">
                   <div class="form-group" style="flex:1">
-                    <label v-if="i === 0">Ordem de Venda</label>
+                    <label v-if="i === 0">Ordem de Venda <FieldInfo campo="ordens_venda" :dicas="opcoes.dicas" /></label>
                     <input v-model.number="form.ordens_venda[i]" type="number" placeholder="Ex: 3000123" />
                   </div>
                   <button v-if="form.ordens_venda.length > 1" type="button" class="btn btn-secondary btn-sm remessa-remove" @click="removeItem('ordens_venda', i)" style="margin-top:auto">
@@ -181,7 +181,7 @@
         <!-- Detalhe -->
         <div class="form-section">
           <div class="form-group">
-            <label>Detalhe / Observação</label>
+            <label>Detalhe / Observação <FieldInfo campo="detalhe" :dicas="opcoes.dicas" /></label>
             <textarea v-model="form.detalhe" placeholder="Descreva o problema com mais detalhes..." rows="3"></textarea>
           </div>
         </div>
@@ -192,7 +192,7 @@
         <div class="form-section">
           <div class="form-section-header">
             <span class="form-section-num">4</span>
-            <h3 class="form-section-title">Evidências / Anexos</h3>
+            <h3 class="form-section-title">Evidências / Anexos <FieldInfo campo="anexos" :dicas="opcoes.dicas" /></h3>
           </div>
           <p class="section-hint">JPEG, PNG, PDF — máx 20 MB cada · até 5 arquivos · ou cole com Ctrl+V</p>
 
@@ -260,11 +260,12 @@
 import { ref, computed, inject, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { api } from '../api'
+import FieldInfo from '../components/FieldInfo.vue'
 
 const router = useRouter()
 const user = inject('user')
 
-const opcoes = ref({ causas: [], subsetores_causadores: [], acoes: [], ufs: [], empresas: [], setores_por_empresa: {} })
+const opcoes = ref({ causas: [], subsetores_causadores: [], acoes: [], ufs: [], empresas: [], areas: [], empresas_por_area: {}, dicas: {} })
 const loadingOpcoes = ref(true)
 const submitting = ref(false)
 const error = ref('')
@@ -305,33 +306,20 @@ function onPaste(e) {
   if (file) addFile(new File([file], `paste_${Date.now()}.png`, { type: file.type }))
 }
 
-const AREA_EMPRESAS = {
-  ACL: ['ACI_MATRIZ','ACI_FILIAL','SINOBRAS'], PCP: ['ACI_MATRIZ','ACI_FILIAL','SINOBRAS'],
-  Qualidade: ['ACI_MATRIZ','ACI_FILIAL','SINOBRAS'], MEP: ['ACI_MATRIZ','ACI_FILIAL','SINOBRAS'],
-  Expedicao: ['ACI_MATRIZ','ACI_FILIAL','SINOBRAS'], Producao: ['ACI_MATRIZ','ACI_FILIAL','SINOBRAS'],
-  Comercial: ['ACC'], Customer_Service: ['ACC'],
-}
-const TRIAGEM = {
-  'ACL_ACI_MATRIZ':['ACL','ACI_MATRIZ'],'ACL_ACI_FILIAL':['ACL','ACI_FILIAL'],'ACL_SINOBRAS':['ACL','SINOBRAS'],
-  'Comercial_ACC':['Comercial','ACC'],'PCP_ACI_MATRIZ':['PCP','ACI_MATRIZ'],'PCP_ACI_FILIAL':['PCP','ACI_FILIAL'],
-  'PCP_SINOBRAS':['PCP','SINOBRAS'],'Qualidade_ACI_MATRIZ':['Qualidade','ACI_MATRIZ'],'Qualidade_ACI_FILIAL':['Qualidade','ACI_FILIAL'],
-  'Qualidade_SINOBRAS':['Qualidade','SINOBRAS'],'MEP_ACI_MATRIZ':['MEP','ACI_MATRIZ'],'MEP_ACI_FILIAL':['MEP','ACI_FILIAL'],
-  'MEP_SINOBRAS':['MEP','SINOBRAS'],'Expedicao_ACI_MATRIZ':['Expedicao','ACI_MATRIZ'],'Expedicao_ACI_FILIAL':['Expedicao','ACI_FILIAL'],
-  'Expedicao_SINOBRAS':['Expedicao','SINOBRAS'],'Customer_Service_ACC':['Customer_Service','ACC'],
-  'Producao_ACI_MATRIZ':['Producao','ACI_MATRIZ'],'Producao_ACI_FILIAL':['Producao','ACI_FILIAL'],'Producao_SINOBRAS':['Producao','SINOBRAS'],
-}
-const areasDisponiveis = computed(() => Object.keys(AREA_EMPRESAS).filter(area =>
-  (AREA_EMPRESAS[area] || []).some(empresa => {
-    const destino = TRIAGEM[`${area}_${empresa}`]
-    return !destino || !(destino[0] === user.value?.sector && destino[1] === user.value?.company)
-  })
-))
+// Áreas e Empresas vêm das listas configuráveis, e as empresas permitidas de
+// cada área vêm dos vínculos "Empresas por Área" (admin gerencia em Configurações).
+const areasDisponiveis = computed(() =>
+  (opcoes.value.areas || []).filter(area =>
+    ((opcoes.value.empresas_por_area || {})[area] || []).some(empresa =>
+      !(area === user.value?.sector && empresa === user.value?.company)
+    )
+  )
+)
 const empresasParaArea = computed(() => {
   if (!form.value.area_causadora) return []
-  return (AREA_EMPRESAS[form.value.area_causadora] || []).filter(empresa => {
-    const destino = TRIAGEM[`${form.value.area_causadora}_${empresa}`]
-    return !destino || !(destino[0] === user.value?.sector && destino[1] === user.value?.company)
-  })
+  return ((opcoes.value.empresas_por_area || {})[form.value.area_causadora] || []).filter(empresa =>
+    !(form.value.area_causadora === user.value?.sector && empresa === user.value?.company)
+  )
 })
 async function submit() {
   error.value = ''

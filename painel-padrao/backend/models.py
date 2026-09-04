@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime, timezone
-from sqlalchemy import String, Boolean, DateTime, Integer, BigInteger, Text, ForeignKey, ARRAY
+from sqlalchemy import String, Boolean, DateTime, Integer, BigInteger, Text, ForeignKey, ARRAY, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from database import Base
@@ -46,6 +46,48 @@ class OpcaoLista(Base):
     valor: Mapped[str] = mapped_column(String(200), nullable=False)
     ativo: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     ordem: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+
+
+class AreaEmpresa(Base):
+    """Vínculo configurável entre Área (setor) e Empresa permitida.
+
+    Define quais empresas são válidas para cada área no formulário de FCA,
+    no cadastro de usuários e nos encaminhamentos. Gerido pelo admin em
+    Configurações → "Empresas por Área".
+    """
+    __tablename__ = "areas_empresas"
+    __table_args__ = (
+        UniqueConstraint("area", "empresa", name="uq_areas_empresas_area_empresa"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    area: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
+    empresa: Mapped[str] = mapped_column(String(50), nullable=False)
+    ativo: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    ordem: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
+
+
+class CampoDica(Base):
+    """Texto de orientação (tooltip "i") exibido sobre campos do FCA.
+
+    Cada linha vincula uma chave de campo (ex: 'causa', 'area_causadora',
+    'devolutiva') a um texto de ajuda que o usuário vê ao passar o mouse.
+    Gerido pelo admin em Configurações → "Dicas dos Campos".
+    """
+    __tablename__ = "campo_dicas"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    campo: Mapped[str] = mapped_column(String(50), nullable=False, unique=True, index=True)
+    titulo: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    texto: Mapped[str] = mapped_column(Text, nullable=False)
+    ativo: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    ordem: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
 
 
 class SlaRegra(Base):

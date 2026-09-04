@@ -97,23 +97,30 @@ const route  = useRoute()
 const router = useRouter()
 const isEdit = computed(() => !!route.params.id)
 
-const EMPRESAS = ['ACI_MATRIZ', 'ACI_FILIAL', 'SINOBRAS', 'ACC']
-const SETORES_POR_EMPRESA = {
-  ACI_MATRIZ: ['ACL', 'PCP', 'Qualidade', 'MEP', 'Expedicao', 'Producao'],
-  ACI_FILIAL: ['ACL', 'PCP', 'Qualidade', 'MEP', 'Expedicao', 'Producao'],
-  SINOBRAS:   ['ACL', 'PCP', 'Qualidade', 'MEP', 'Expedicao', 'Producao'],
-  ACC:        ['Comercial', 'Customer_Service'],
-}
-
 const loading   = ref(false)
 const submitting = ref(false)
 const error     = ref('')
 const success   = ref('')
 const form = ref({ name: '', email: '', password: '', auth_provider: 'local', company: '', sector: '', role: 'user', matricula: '', turno: '' })
 
-const setoresDisponiveis = computed(() => SETORES_POR_EMPRESA[form.value.company] || [])
+const opcoes = ref({ empresas: [], areas: [], empresas_por_area: {} })
+const EMPRESAS = computed(() => opcoes.value.empresas || [])
+const setoresDisponiveis = computed(() => {
+  const empresa = form.value.company
+  if (!empresa) return []
+  const areas = []
+  for (const [area, empresas] of Object.entries(opcoes.value.empresas_por_area || {})) {
+    if (empresas.includes(empresa)) areas.push(area)
+  }
+  return areas
+})
 
 onMounted(async () => {
+  try {
+    opcoes.value = await api.opcoes.get()
+  } catch (e) {
+    error.value = 'Erro ao carregar opções: ' + e.message
+  }
   if (!isEdit.value) return
   loading.value = true
   try {

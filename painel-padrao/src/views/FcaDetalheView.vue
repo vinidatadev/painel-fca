@@ -110,18 +110,18 @@
         </div>
         <form @submit.prevent="responder" style="padding:var(--space-4)">
           <div class="form-group">
-            <label>Problema Solucionado? <span class="req">*</span></label>
+            <label>Problema Solucionado? <FieldInfo campo="problema_solucionado" :dicas="opcoes.dicas" /> <span class="req">*</span></label>
             <div class="radio-group">
               <label class="radio-opt"><input type="radio" v-model="resposta.problema_solucionado" :value="true" required /> Sim</label>
               <label class="radio-opt"><input type="radio" v-model="resposta.problema_solucionado" :value="false" /> Não</label>
             </div>
           </div>
           <div class="form-group">
-            <label>Devolutiva da Tratativa <span class="req">*</span></label>
+            <label>Devolutiva da Tratativa <FieldInfo campo="devolutiva" :dicas="opcoes.dicas" /> <span class="req">*</span></label>
             <textarea v-model="resposta.devolutiva" required rows="4" placeholder="Descreva como foi tratado o problema..."></textarea>
           </div>
           <div class="form-group">
-            <label>Encaminhar para outro setor?</label>
+            <label>Encaminhar para outro setor? <FieldInfo campo="encaminhar" :dicas="opcoes.dicas" /></label>
             <div class="radio-group">
               <label class="radio-opt"><input type="radio" v-model="encaminhar" :value="false" /> Não</label>
               <label class="radio-opt"><input type="radio" v-model="encaminhar" :value="true" /> Sim</label>
@@ -152,7 +152,7 @@
       <div v-if="podeApontar" class="card apontar-card" style="margin-top:var(--space-4)">
         <div class="resposta-header">
           <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M3 5h12M3 9h12M3 13h7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
-          <span>Apontar Causa</span>
+          <span>Apontar Causa <FieldInfo campo="apontar_causa" :dicas="opcoes.dicas" /></span>
         </div>
         <p class="apontar-desc">Registre outro setor causador deste FCA. É apenas informação para análise — não encaminha o FCA.</p>
 
@@ -317,6 +317,7 @@ import { ref, computed, inject, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { api } from '../api'
 import SlaBadge from '../components/SlaBadge.vue'
+import FieldInfo from '../components/FieldInfo.vue'
 
 const route = useRoute()
 const user  = inject('user')
@@ -339,14 +340,9 @@ const showApontar    = ref(false); const apontar = ref({ setor: '', empresa: '',
 const showAudit      = ref(false); const auditLogs = ref([]); const loadingAudit = ref(false)
 const showCancelar   = ref(false); const cancelarMotivo = ref(''); const subCancelar = ref(false); const errorCancelar = ref('')
 
-const SETOR_EMPRESAS = {
-  ACL:['ACI_MATRIZ','ACI_FILIAL','SINOBRAS'], PCP:['ACI_MATRIZ','ACI_FILIAL','SINOBRAS'],
-  Qualidade:['ACI_MATRIZ','ACI_FILIAL','SINOBRAS'], MEP:['ACI_MATRIZ','ACI_FILIAL','SINOBRAS'],
-  Expedicao:['ACI_MATRIZ','ACI_FILIAL','SINOBRAS'], Producao:['ACI_MATRIZ','ACI_FILIAL','SINOBRAS'],
-  Comercial:['ACC'], Customer_Service:['ACC'],
-}
-const SETORES_ENC = Object.keys(SETOR_EMPRESAS)
-const empresasParaSetor = (s) => SETOR_EMPRESAS[s] || []
+const opcoes = ref({ setores_por_empresa: {}, areas: [], empresas: [], empresas_por_area: {}, dicas: {} })
+const SETORES_ENC = computed(() => Object.keys(opcoes.value.empresas_por_area || {}))
+const empresasParaSetor = (s) => (opcoes.value.empresas_por_area || {})[s] || []
 
 const etapaAtiva = computed(() => {
   if (!fca.value) return null
@@ -468,6 +464,7 @@ async function _onWsUpdate() { await loadFca(); await loadComentarios() }
 onMounted(async () => {
   await loadFca(); loading.value = false
   await preloadAnexoUrls(); await loadComentarios()
+  try { opcoes.value = await api.opcoes.get() } catch (e) { /* opções opcionais */ }
   registerWsListener?.(_onWsUpdate)
 })
 

@@ -12,11 +12,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, or_, and_, cast, Text, text as sa_text
 from sqlalchemy.orm import selectinload
 from database import get_db
-from models import User, FCA, FCAEtapa
+from models import User, FCA, FCAEtapa, OpcaoLista, AreaEmpresa
 from auth import require_user
 from business import (
-    validate_company_sector, get_triagem,
-    CAUSAS, ACOES, UFS, SECTORS_CAN_OPEN, SECTORS_WITH_RETURN, COMPANIES
+    CAUSAS, ACOES, UFS, SECTORS_CAN_OPEN
 )
 import emails as email_svc
 from sla import get_sla_deadline
@@ -50,6 +49,28 @@ async def _get_seq(db: AsyncSession, year: int) -> int:
 def _etapa_ativa(etapas: list[FCAEtapa]) -> FCAEtapa | None:
     pendentes = [e for e in etapas if e.status in ("pendente", "em_andamento")]
     return min(pendentes, key=lambda e: e.order_index) if pendentes else None
+
+
+async def _opcoes_ativas(db: AsyncSession, tipo: str) -> set[str]:
+    """Valores ativos de uma lista configurável (opcoes_lista)."""
+    result = await db.execute(
+        select(OpcaoLista.valor).where(
+            OpcaoLista.tipo == tipo, OpcaoLista.ativo == True
+        )
+    )
+    return set(result.scalars().all())
+
+
+async def _combo_ativo(db: AsyncSession, area: str, empresa: str) -> bool:
+    """True se a combinação área+empresa está ativa nos vínculos configuráveis."""
+    result = await db.execute(
+        select(AreaEmpresa.id).where(
+            AreaEmpresa.area == area,
+            AreaEmpresa.empresa == empresa,
+            AreaEmpresa.ativo == True,
+        )
+    )
+    return result.scalar_one_or_none() is not None
 
 
 def _can_view(fca: FCA, etapas: list[FCAEtapa], user: dict) -> bool:
@@ -470,12 +491,25 @@ async def create_fca(
         raise HTTPException(status_code=422, detail="Ação inválida")
     if body.uf not in UFS:
         raise HTTPException(status_code=422, detail="UF inválida")
-    if body.empresa_causadora not in COMPANIES:
-        raise HTTPException(status_code=422, detail="Empresa causadora inválida")
 
-    triagem = get_triagem(body.area_causadora, body.empresa_causadora)
-    if not triagem:
-        raise HTTPException(status_code=422, detail="Combinação área causadora + empresa inválida")
+    # Empresa e Área vêm das listas configuráveis (admin edita em Configurações).
+    # Valida contra o banco para refletir edições/desativações feitas na tela.
+    empresas_ativas = await _opcoes_ativas(db, "empresa")
+    areas_ativas = await _opcoes_ativas(db, "area")
+    if body.empresa_causadora not in empresas_ativas:
+        raise HTTPException(status_code=422, detail="Empresa causadora inválida")
+    if body.area_causadora not in areas_ativas:
+        raise HTTPException(status_code=422, detail="Área causadora inválida")
+
+    # A área causadora é também o setor de destino da primeira etapa, e a
+    # combinação (área, empresa) precisa estar ativa nos vínculos configuráveis.
+    if not await _combo_ativo(db, body.area_causadora, body.empresa_causadora):
+        raise HTTPException(
+            status_code=422,
+            detail="Combinação área + empresa não permitida nas configurações",
+        )
+
+    triagem = (body.area_causadora, body.empresa_causadora)
 
     # Não pode abrir FCA para o próprio setor/empresa
     setor_destino, empresa_destino = triagem
@@ -608,10 +642,10 @@ async def responder_fca(
     if etapa_atual.status == "concluido":
         raise HTTPException(status_code=409, detail="Esta etapa já foi concluída")
 
-    # Valida encaminhamentos
+    # Valida encaminhamentos contra os vínculos configuráveis área↔empresa
     for enc in body.encaminhar:
-        if not validate_company_sector(enc.empresa, enc.setor):
-            raise HTTPException(status_code=422, detail=f"Encaminhamento inválido: {enc.setor} + {enc.empresa}")
+        if not await _combo_ativo(db, enc.setor, enc.empresa):
+            raise HTTPException(status_code=422, detail=f"Combinação inválida: {enc.setor} + {enc.empresa}")
 
     now = datetime.now(timezone.utc)
 
@@ -785,8 +819,8 @@ async def apontar_causa(
             detail="Apenas o setor causador inicial pode apontar causa",
         )
 
-    if not validate_company_sector(body.empresa, body.setor):
-        raise HTTPException(status_code=422, detail=f"Setor/empresa inválido: {body.setor} + {body.empresa}")
+    if not await _combo_ativo(db, body.setor, body.empresa):
+        raise HTTPException(status_code=422, detail=f"Combinação inválida: {body.setor} + {body.empresa}")
 
     now = datetime.now(timezone.utc)
     fca.apontar_causa_setor = body.setor
