@@ -284,10 +284,16 @@ async function carregarColunas() {
 
 function formatDate(iso) { return iso ? new Date(iso).toLocaleDateString('pt-BR') : '—' }
 
+function temSetor(setor, empresa) {
+  if (!user.value) return false
+  const setores = user.value.setores || []
+  if (!setores.length) return user.value.sector === setor && user.value.company === empresa
+  return setores.some(s => s.setor === setor && s.empresa === empresa)
+}
+
 function eMinhaVez(f) {
   return !!(user.value && f.etapa_atual &&
-    f.etapa_atual.setor === user.value.sector &&
-    f.etapa_atual.empresa === user.value.company)
+    temSetor(f.etapa_atual.setor, f.etapa_atual.empresa))
 }
 
 function fecharMenus() { showColunasMenu.value = false }

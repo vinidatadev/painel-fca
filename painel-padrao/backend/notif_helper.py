@@ -12,13 +12,13 @@ from ws_manager import manager
 async def _uids_envolvidos_fca(db: AsyncSession, fca: FCA) -> list[uuid.UUID]:
     """Retorna IDs de usuários que devem ser notificados sobre um FCA.
 
-    Considera TODOS os usuários ativos do setor/empresa solicitante (e não
-    apenas quem criou) mais os usuários ativos de cada etapa do FCA. Assim,
-    qualquer movimento (comentário, resposta, encerramento) notifica o setor
-    inteiro envolvido, e não somente um usuário individual.
+    Considera TODOS os usuários ativos que possuem vínculo (UserSetor) com o
+    setor/empresa solicitante ou com qualquer etapa do FCA — inclusive usuários
+    com mais de um setor no perfil.
     """
     ids: set[uuid.UUID] = set()
     from sqlalchemy import or_, and_
+    from models import UserSetor
 
     setores = {(fca.setor_solicitante, fca.empresa_solicitante)}
     result = await db.execute(
@@ -28,10 +28,12 @@ async def _uids_envolvidos_fca(db: AsyncSession, fca: FCA) -> list[uuid.UUID]:
     setores.update((e.setor, e.empresa) for e in etapas)
 
     if setores:
-        conds = [and_(User.sector == s, User.company == e) for s, e in setores]
+        conds = [and_(UserSetor.setor == s, UserSetor.empresa == e) for s, e in setores]
         q = (
             select(User)
+            .join(UserSetor, UserSetor.user_id == User.id)
             .where(User.is_active == True, or_(*conds))  # noqa: E712
+            .distinct()
         )
         res = await db.execute(q)
         for u in res.scalars().all():

@@ -332,6 +332,14 @@ async def lifespan(app: FastAPI):
                 END IF;
             END$$;
         """))
+        # Migração: vínculos de setor por usuário (user_setores). Usuários já
+        # existentes ganham um vínculo principal a partir do setor/empresa atuais.
+        await conn.execute(_sql("""
+            INSERT INTO user_setores (id, user_id, setor, empresa, principal, ativo, created_at)
+            SELECT gen_random_uuid(), u.id, u.sector, u.company, TRUE, TRUE, NOW()
+            FROM users u
+            WHERE NOT EXISTS (SELECT 1 FROM user_setores s WHERE s.user_id = u.id)
+        """))
     try:
         storage.ensure_bucket()
     except Exception as e:

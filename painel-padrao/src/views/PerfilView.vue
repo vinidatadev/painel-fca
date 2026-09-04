@@ -21,8 +21,17 @@
         </div>
         <div class="user-info-block">
           <h2>{{ perfil.name }}</h2>
-          <span class="chip">{{ perfil.sector }} · {{ perfil.company }}</span>
-          <span class="chip chip-role">{{ perfil.role }}</span>
+          <div class="perfil-setores">
+            <span
+              v-for="v in perfil.setores || []"
+              :key="v.setor + '|' + v.empresa"
+              class="chip"
+              :class="{ 'chip-principal': v.principal }"
+              :title="v.principal ? 'Setor principal' : ''"
+            >{{ v.setor }} · {{ v.empresa }}</span>
+            <span v-if="!perfil.setores?.length" class="chip">{{ perfil.sector }} · {{ perfil.company }}</span>
+            <span class="chip chip-role">{{ perfil.role }}</span>
+          </div>
           <p class="email">{{ perfil.email }}</p>
         </div>
       </div>
@@ -286,6 +295,8 @@ async function removerAvatar() {
 .user-info-block .email { font-size: var(--font-size-xs); color: var(--color-neutral-400); margin-top: var(--space-1); }
 .chip { display: inline-block; background: var(--color-primary-100); color: var(--color-primary-700); border-radius: var(--radius-full); padding: 2px var(--space-3); font-size: var(--font-size-xs); font-weight: var(--font-weight-semibold); margin-right: var(--space-1); }
 .chip-role { background: var(--color-warning-bg); color: var(--color-warning-text); }
+.perfil-setores { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1); }
+.chip-principal { outline: 1.5px solid var(--color-primary-500); outline-offset: 1px; }
 
 .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3) var(--space-5); }
 .success-msg { color: var(--color-success-text); font-size: var(--font-size-sm); margin-top: var(--space-2); background: var(--color-success-bg); padding: var(--space-2) var(--space-3); border-radius: var(--radius-md); }

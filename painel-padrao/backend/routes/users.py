@@ -3,9 +3,10 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, delete
+from sqlalchemy.orm import selectinload
 from database import get_db
-from models import User, OpcaoLista, AreaEmpresa
+from models import User, OpcaoLista, AreaEmpresa, UserSetor
 from auth import hash_password, require_user
 
 router = APIRouter(prefix="/usuarios", tags=["usuarios"])
@@ -32,6 +33,57 @@ async def _combo_ativo(db: AsyncSession, area: str, empresa: str) -> bool:
     return result.scalar_one_or_none() is not None
 
 
+class VinculoIn(BaseModel):
+    setor: str
+    empresa: str
+    principal: bool = False
+
+
+async def _validar_setores(db: AsyncSession, setores: list[VinculoIn]) -> list[dict]:
+    """Valida a lista de vínculos e garante exatamente um principal."""
+    if not setores:
+        raise HTTPException(status_code=422, detail="Informe ao menos um setor/empresa")
+
+    empresas_ativas = await _opcoes_ativas(db, "empresa")
+    areas_ativas = await _opcoes_ativas(db, "area")
+    seen: set[tuple[str, str]] = set()
+    principals = 0
+    for v in setores:
+        if (v.setor, v.empresa) in seen:
+            raise HTTPException(status_code=422, detail=f"Vínculo repetido: {v.setor} + {v.empresa}")
+        seen.add((v.setor, v.empresa))
+        if v.setor not in areas_ativas:
+            raise HTTPException(status_code=422, detail=f"Setor '{v.setor}' inválido")
+        if v.empresa not in empresas_ativas:
+            raise HTTPException(status_code=422, detail=f"Empresa inválida: {v.empresa}")
+        if not await _combo_ativo(db, v.setor, v.empresa):
+            raise HTTPException(
+                status_code=422,
+                detail=f"Combinação '{v.setor}' + '{v.empresa}' não permitida nas configurações",
+            )
+        if v.principal:
+            principals += 1
+
+    if principals > 1:
+        raise HTTPException(status_code=422, detail="Marque apenas um setor como principal")
+    if principals == 0:
+        setores[0].principal = True
+
+    return [{"setor": v.setor, "empresa": v.empresa, "principal": v.principal} for v in setores]
+
+
+async def _sync_setores(db: AsyncSession, user: User, setores: list[dict]):
+    """Substitui os vínculos do usuário e atualiza User.sector/company (principal)."""
+    await db.execute(delete(UserSetor).where(UserSetor.user_id == user.id))
+    for s in setores:
+        db.add(UserSetor(
+            user_id=user.id, setor=s["setor"], empresa=s["empresa"], principal=s["principal"]
+        ))
+    principal = next((s for s in setores if s["principal"]), setores[0])
+    user.sector = principal["setor"]
+    user.company = principal["empresa"]
+
+
 class UserOut(BaseModel):
     id: str
     email: str
@@ -45,6 +97,7 @@ class UserOut(BaseModel):
     is_active: bool
     acesso_relatorio: bool
     created_at: str
+    setores: list[dict] = []
 
     @classmethod
     def from_orm(cls, u: User):
@@ -55,7 +108,11 @@ class UserOut(BaseModel):
             matricula=u.matricula, turno=u.turno,
             is_active=u.is_active,
             acesso_relatorio=u.acesso_relatorio,
-            created_at=u.created_at.isoformat()
+            created_at=u.created_at.isoformat(),
+            setores=[
+                {"setor": s.setor, "empresa": s.empresa, "principal": s.principal}
+                for s in (u.setores or [])
+            ],
         )
 
 
@@ -64,8 +121,9 @@ class UserCreate(BaseModel):
     email: EmailStr
     password: str | None = Field(default=None, min_length=8)
     auth_provider: Literal["local", "microsoft"] = "local"
-    company: str
-    sector: str
+    company: str | None = None
+    sector: str | None = None
+    setores: list[VinculoIn] = []
     role: Literal["admin", "user"] = "user"
     matricula: str | None = None
     turno: Literal["A", "B", "C", "D"] | None = None
@@ -75,6 +133,7 @@ class UserUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=2)
     company: str | None = None
     sector: str | None = None
+    setores: list[VinculoIn] | None = None
     role: Literal["admin", "user"] | None = None
     matricula: str | None = None
     turno: Literal["A", "B", "C", "D"] | None = None
@@ -93,15 +152,17 @@ async def list_users(
     db: AsyncSession = Depends(get_db),
     _: dict = Depends(admin_only)
 ):
-    q = select(User).order_by(User.name)
-    if company:
-        q = q.where(User.company == company)
-    if sector:
-        q = q.where(User.sector == sector)
+    q = select(User).options(selectinload(User.setores)).order_by(User.name)
+    if company or sector:
+        q = q.join(UserSetor, UserSetor.user_id == User.id)
+        if company:
+            q = q.where(UserSetor.empresa == company)
+        if sector:
+            q = q.where(UserSetor.setor == sector)
     if active is not None:
         q = q.where(User.is_active == active)
     result = await db.execute(q)
-    return [UserOut.from_orm(u) for u in result.scalars().all()]
+    return [UserOut.from_orm(u) for u in result.scalars().unique().all()]
 
 
 @router.post("/", response_model=UserOut, status_code=status.HTTP_201_CREATED)
@@ -110,17 +171,14 @@ async def create_user(
     db: AsyncSession = Depends(get_db),
     _: dict = Depends(admin_only)
 ):
-    empresas_ativas = await _opcoes_ativas(db, "empresa")
-    areas_ativas = await _opcoes_ativas(db, "area")
-    if body.company not in empresas_ativas:
-        raise HTTPException(status_code=422, detail=f"Empresa inválida: {body.company}")
-    if body.sector not in areas_ativas:
-        raise HTTPException(status_code=422, detail=f"Setor '{body.sector}' inválido")
-    if not await _combo_ativo(db, body.sector, body.company):
-        raise HTTPException(
-            status_code=422,
-            detail=f"Combinação '{body.sector}' + '{body.company}' não permitida nas configurações",
-        )
+    if not body.setores:
+        if body.company and body.sector:
+            body.setores = [VinculoIn(setor=body.sector, empresa=body.company, principal=True)]
+        else:
+            raise HTTPException(status_code=422, detail="Informe ao menos um setor/empresa")
+
+    setores = await _validar_setores(db, body.setores)
+    principal = next((s for s in setores if s["principal"]), setores[0])
 
     existing = await db.execute(select(User).where(User.email == body.email))
     if existing.scalar_one_or_none():
@@ -134,8 +192,8 @@ async def create_user(
         name=body.name,
         password_hash=hash_password(body.password) if body.password else None,
         auth_provider=body.auth_provider,
-        company=body.company,
-        sector=body.sector,
+        company=principal["empresa"],
+        sector=principal["setor"],
         role=body.role,
         matricula=body.matricula,
         turno=body.turno,
@@ -143,9 +201,17 @@ async def create_user(
         onboarding_completed=False,  # precisa passar pelo onboarding
     )
     db.add(user)
+    await db.flush()
+    for s in setores:
+        db.add(UserSetor(
+            user_id=user.id, setor=s["setor"], empresa=s["empresa"], principal=s["principal"]
+        ))
     await db.commit()
-    await db.refresh(user)
-    return UserOut.from_orm(user)
+
+    result = await db.execute(
+        select(User).options(selectinload(User.setores)).where(User.id == user.id)
+    )
+    return UserOut.from_orm(result.scalar_one())
 
 
 @router.get("/{user_id}", response_model=UserOut)
@@ -154,7 +220,9 @@ async def get_user(
     db: AsyncSession = Depends(get_db),
     _: dict = Depends(admin_only)
 ):
-    result = await db.execute(select(User).where(User.id == user_id))
+    result = await db.execute(
+        select(User).options(selectinload(User.setores)).where(User.id == user_id)
+    )
     user = result.scalar_one_or_none()
     if not user:
         raise HTTPException(status_code=404, detail="Usuário não encontrado")
@@ -168,32 +236,15 @@ async def update_user(
     db: AsyncSession = Depends(get_db),
     _: dict = Depends(admin_only)
 ):
-    result = await db.execute(select(User).where(User.id == user_id))
+    result = await db.execute(
+        select(User).options(selectinload(User.setores)).where(User.id == user_id)
+    )
     user = result.scalar_one_or_none()
     if not user:
         raise HTTPException(status_code=404, detail="Usuário não encontrado")
 
-    company = body.company or user.company
-    sector = body.sector or user.sector
-    if body.company or body.sector:
-        empresas_ativas = await _opcoes_ativas(db, "empresa")
-        areas_ativas = await _opcoes_ativas(db, "area")
-        if company not in empresas_ativas:
-            raise HTTPException(status_code=422, detail=f"Empresa inválida: {company}")
-        if sector not in areas_ativas:
-            raise HTTPException(status_code=422, detail=f"Setor '{sector}' inválido")
-        if not await _combo_ativo(db, sector, company):
-            raise HTTPException(
-                status_code=422,
-                detail=f"Combinação '{sector}' + '{company}' não permitida nas configurações",
-            )
-
     if body.name is not None:
         user.name = body.name
-    if body.company is not None:
-        user.company = body.company
-    if body.sector is not None:
-        user.sector = body.sector
     if body.role is not None:
         user.role = body.role
     if body.matricula is not None:
@@ -203,9 +254,29 @@ async def update_user(
     if body.password is not None:
         user.password_hash = hash_password(body.password)
 
+    if body.setores is not None:
+        setores = await _validar_setores(db, body.setores)
+        await _sync_setores(db, user, setores)
+    elif body.company is not None or body.sector is not None:
+        # Compatibilidade: atualiza o vínculo único
+        vinculos = [VinculoIn(
+            setor=body.sector or user.sector,
+            empresa=body.company or user.company,
+            principal=True,
+        )]
+        setores = await _validar_setores(db, vinculos)
+        await _sync_setores(db, user, setores)
+
     await db.commit()
-    await db.refresh(user)
-    return UserOut.from_orm(user)
+    # Recarrega com a relação de setores (populate_existing evita que a coleção
+    # já carregada na sessão volte "velha" após o _sync_setores)
+    result = await db.execute(
+        select(User)
+        .options(selectinload(User.setores))
+        .execution_options(populate_existing=True)
+        .where(User.id == user.id)
+    )
+    return UserOut.from_orm(result.scalar_one())
 
 
 @router.patch("/{user_id}", response_model=UserOut)
@@ -215,7 +286,9 @@ async def patch_user(
     db: AsyncSession = Depends(get_db),
     _: dict = Depends(admin_only),
 ):
-    result = await db.execute(select(User).where(User.id == user_id))
+    result = await db.execute(
+        select(User).options(selectinload(User.setores)).where(User.id == user_id)
+    )
     user = result.scalar_one_or_none()
     if not user:
         raise HTTPException(status_code=404, detail="Usuário não encontrado")

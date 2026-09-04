@@ -3,8 +3,9 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 from database import get_db
-from models import User
+from models import User, UserSetor
 from auth import require_user
 import storage
 
@@ -48,6 +49,7 @@ class PerfilOut(BaseModel):
     notif_sms: bool
     notif_push: bool
     notif_som: str
+    setores: list[dict] = []
 
 
 class PerfilUpdate(BaseModel):
@@ -65,7 +67,7 @@ async def get_perfil(
     current: dict = Depends(any_user),
     db: AsyncSession = Depends(get_db)
 ):
-    result = await db.execute(select(User).where(User.id == current["user_id"]))
+    result = await db.execute(_base_query().where(User.id == current["user_id"]))
     user = result.scalar_one_or_none()
     if not user:
         raise HTTPException(status_code=404, detail="Usuário não encontrado")
@@ -79,7 +81,7 @@ async def update_perfil(
     db: AsyncSession = Depends(get_db)
 ):
     import uuid as _uuid
-    result = await db.execute(select(User).where(User.id == _uuid.UUID(current["user_id"])))
+    result = await db.execute(_base_query().where(User.id == _uuid.UUID(current["user_id"])))
     user = result.scalar_one_or_none()
     if not user:
         raise HTTPException(status_code=404, detail="Usuário não encontrado")
@@ -128,7 +130,7 @@ async def upload_avatar(
     if not _avatar_magic_ok(data, file.content_type):
         raise HTTPException(status_code=415, detail="Conteúdo não corresponde a uma imagem válida.")
 
-    result = await db.execute(select(User).where(User.id == _uuid.UUID(current["user_id"])))
+    result = await db.execute(_base_query().where(User.id == _uuid.UUID(current["user_id"])))
     user = result.scalar_one_or_none()
 
     # Remove avatar antigo
@@ -155,7 +157,7 @@ async def delete_avatar(
     db: AsyncSession = Depends(get_db)
 ):
     import uuid as _uuid
-    result = await db.execute(select(User).where(User.id == _uuid.UUID(current["user_id"])))
+    result = await db.execute(_base_query().where(User.id == _uuid.UUID(current["user_id"])))
     user = result.scalar_one_or_none()
     if user.avatar_url:
         storage.delete_file(user.avatar_url)
@@ -211,7 +213,15 @@ def _to_out(u: User) -> PerfilOut:
         avatar_url=u.avatar_url,
         notif_email=u.notif_email, notif_sms=u.notif_sms, notif_push=u.notif_push,
         notif_som=u.notif_som if u.notif_som else "som1",
+        setores=[
+            {"setor": s.setor, "empresa": s.empresa, "principal": s.principal}
+            for s in (u.setores or [])
+        ],
     )
+
+
+def _base_query():
+    return select(User).options(selectinload(User.setores))
 
 def _ext(filename: str | None) -> str:
     if filename and "." in filename:

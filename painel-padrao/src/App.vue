@@ -320,6 +320,13 @@ provide('registerWsListener', (fn) => { wsListener.value = fn })
 let _ws = null
 let _wsTimer = null
 
+function temSetor(u, setor, empresa) {
+  if (!u) return false
+  const setores = u.setores || []
+  if (!setores.length) return u.sector === setor && u.company === empresa
+  return setores.some(s => s.setor === setor && s.empresa === empresa)
+}
+
 async function connectWs() {
   if (!user.value) return
   const apiUrl = import.meta.env.VITE_API_URL || ''
@@ -335,7 +342,7 @@ async function connectWs() {
     catch { event = ev.data }
     if (event === 'fca_updated') {
       if (user.value && destinatarios.length > 0) {
-        const ok = destinatarios.some(d => d.setor === user.value.sector && d.empresa === user.value.company)
+        const ok = destinatarios.some(d => temSetor(user.value, d.setor, d.empresa))
         if (ok) dispararNotificacao()
       }
       if (wsListener.value) wsListener.value('fca_updated')
@@ -353,6 +360,8 @@ async function connectWs() {
 
 const canOpenFca = computed(() => {
   if (!user.value) return false
+  const setores = user.value.setores || []
+  if (setores.length) return setores.some(s => s.setor !== 'Producao')
   return !['Producao'].includes(user.value.sector)
 })
 

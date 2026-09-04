@@ -165,7 +165,12 @@ const exporting = ref(false)
 const filters  = ref({ q: '', status_filter: '', area_causadora: '', data_inicio: '', data_fim: '' })
 
 const totalPages = computed(() => Math.ceil(total.value / pageSize))
-const canOpen = computed(() => user.value && !['Producao'].includes(user.value.sector))
+const canOpen = computed(() => {
+  if (!user.value) return false
+  const setores = user.value.setores || []
+  if (setores.length) return setores.some(s => s.setor !== 'Producao')
+  return !['Producao'].includes(user.value.sector)
+})
 const hasActiveFilters = computed(() => Object.values(filters.value).some(v => v !== ''))
 
 const pageNumbers = computed(() => {

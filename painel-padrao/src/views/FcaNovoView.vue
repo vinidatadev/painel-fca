@@ -18,13 +18,20 @@
             <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><circle cx="9" cy="6" r="3" stroke="currentColor" stroke-width="1.5"/><path d="M3 15c0-3.314 2.686-6 6-6s6 2.686 6 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
           </div>
           <div class="user-context-grid">
-            <div class="user-context-item">
+            <div v-if="precisaSelecionarSetor" class="user-context-item">
+              <span class="user-context-label">Setor solicitante <span class="req">*</span></span>
+              <select v-model="solicitante" required class="user-context-select">
+                <option :value="null" disabled>Selecione...</option>
+                <option v-for="v in vinculosUser" :key="v.setor + '|' + v.empresa" :value="v">{{ v.setor }} · {{ v.empresa }}</option>
+              </select>
+            </div>
+            <div v-else class="user-context-item">
               <span class="user-context-label">Setor solicitante</span>
-              <span class="user-context-value">{{ user.sector }}</span>
+              <span class="user-context-value">{{ solicitanteAtivo?.setor || user.sector }}</span>
             </div>
             <div class="user-context-item">
               <span class="user-context-label">Empresa</span>
-              <span class="user-context-value">{{ user.company }}</span>
+              <span class="user-context-value">{{ solicitanteAtivo?.empresa || user.company }}</span>
             </div>
           </div>
         </div>
@@ -265,6 +272,16 @@ import FieldInfo from '../components/FieldInfo.vue'
 const router = useRouter()
 const user = inject('user')
 
+// Vínculos de setor do usuário. Com mais de um, ele precisa escolher "como se
+// fosse" de qual setor está abrindo o FCA.
+const vinculosUser = computed(() => (user.value?.setores || []).filter(v => v.setor && v.empresa))
+const solicitante = ref(null)
+const precisaSelecionarSetor = computed(() => vinculosUser.value.length > 1)
+const solicitanteAtivo = computed(() => {
+  if (vinculosUser.value.length === 1) return vinculosUser.value[0]
+  return solicitante.value
+})
+
 const opcoes = ref({ causas: [], subsetores_causadores: [], acoes: [], ufs: [], empresas: [], areas: [], empresas_por_area: {}, dicas: {} })
 const loadingOpcoes = ref(true)
 const submitting = ref(false)
@@ -311,24 +328,30 @@ function onPaste(e) {
 const areasDisponiveis = computed(() =>
   (opcoes.value.areas || []).filter(area =>
     ((opcoes.value.empresas_por_area || {})[area] || []).some(empresa =>
-      !(area === user.value?.sector && empresa === user.value?.company)
+      !(area === solicitanteAtivo.value?.setor && empresa === solicitanteAtivo.value?.empresa)
     )
   )
 )
 const empresasParaArea = computed(() => {
   if (!form.value.area_causadora) return []
   return ((opcoes.value.empresas_por_area || {})[form.value.area_causadora] || []).filter(empresa =>
-    !(form.value.area_causadora === user.value?.sector && empresa === user.value?.company)
+    !(form.value.area_causadora === solicitanteAtivo.value?.setor && empresa === solicitanteAtivo.value?.empresa)
   )
 })
 async function submit() {
   error.value = ''
+  if (precisaSelecionarSetor.value && !solicitante.value) {
+    error.value = 'Selecione o setor/empresa solicitante.'
+    return
+  }
   if (isUploading.value) { error.value = 'Aguarde os uploads terminarem.'; return }
   if (pendingFiles.value.filter(f => f.error).length) { error.value = 'Remova os arquivos com erro.'; return }
   submitting.value = true
   try {
     const res = await api.fcas.create({
       ...form.value,
+      setor_solicitante: solicitanteAtivo.value?.setor,
+      empresa_solicitante: solicitanteAtivo.value?.empresa,
       remessas: form.value.remessas.filter(r => r !== null && r !== '' && !isNaN(r)),
       dts: form.value.dts.filter(r => r !== null && r !== '' && !isNaN(r)),
       cod_materiais: form.value.cod_materiais.filter(r => r !== null && r !== '' && !isNaN(r)),
@@ -364,6 +387,17 @@ onUnmounted(() => { window.removeEventListener('paste', onPaste) })
 .user-context-item { display: flex; flex-direction: column; gap: 2px; }
 .user-context-label { font-size: var(--font-size-xs); color: var(--color-neutral-400); text-transform: uppercase; letter-spacing: .04em; }
 .user-context-value { font-size: var(--font-size-sm); font-weight: var(--font-weight-semibold); color: var(--color-primary-700); }
+.user-context-select {
+  padding: var(--space-1) var(--space-2);
+  border: 1.5px solid var(--color-primary-300);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-sm);
+  font-family: var(--font-family-base);
+  color: var(--color-primary-700);
+  font-weight: var(--font-weight-semibold);
+  outline: none; cursor: pointer; background: #fff;
+}
+.user-context-select:focus { border-color: var(--color-primary-500); }
 
 /* Form sections */
 .form-section { padding: var(--space-4) 0; }

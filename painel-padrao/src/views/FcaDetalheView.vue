@@ -344,25 +344,32 @@ const opcoes = ref({ setores_por_empresa: {}, areas: [], empresas: [], empresas_
 const SETORES_ENC = computed(() => Object.keys(opcoes.value.empresas_por_area || {}))
 const empresasParaSetor = (s) => (opcoes.value.empresas_por_area || {})[s] || []
 
+function temSetor(setor, empresa) {
+  if (!user.value) return false
+  const setores = user.value.setores || []
+  if (!setores.length) return user.value.sector === setor && user.value.company === empresa
+  return setores.some(s => s.setor === setor && s.empresa === empresa)
+}
+
 const etapaAtiva = computed(() => {
   if (!fca.value) return null
   return fca.value.etapas.filter(e => e.status === 'pendente' || e.status === 'em_andamento').sort((a,b) => a.order_index - b.order_index)[0] || null
 })
 const minhaVez = computed(() => {
   if (!etapaAtiva.value || !user.value) return false
-  return etapaAtiva.value.setor === user.value.sector && etapaAtiva.value.empresa === user.value.company
+  return temSetor(etapaAtiva.value.setor, etapaAtiva.value.empresa)
 })
 const podeApontar = computed(() => {
   if (!fca.value || !user.value || !etapaAtiva.value) return false
   const primeira = [...fca.value.etapas].sort((a, b) => a.order_index - b.order_index)[0]
   if (!primeira) return false
-  return primeira.setor === user.value.sector && primeira.empresa === user.value.company
+  return temSetor(primeira.setor, primeira.empresa)
 })
 const podeEncerrar = computed(() => {
   if (!fca.value || !user.value) return false
   if (fca.value.status !== 'aguardando_devolutiva') return false
   if (user.value.role === 'admin') return true
-  return fca.value.setor_solicitante === user.value.sector && fca.value.empresa_solicitante === user.value.company
+  return temSetor(fca.value.setor_solicitante, fca.value.empresa_solicitante)
 })
 const filaFutura = computed(() => {
   if (!fca.value) return []

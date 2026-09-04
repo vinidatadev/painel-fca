@@ -197,6 +197,14 @@ async def authenticate_token(token: str, db: AsyncSession, client_ip: str | None
     return user, provider
 
 
+def user_tem_setor(current: dict, setor: str, empresa: str) -> bool:
+    """True se o (setor, empresa) está entre os vínculos do usuário."""
+    for s in current.get("setores", []):
+        if s["setor"] == setor and s["empresa"] == empresa:
+            return True
+    return False
+
+
 def require_user(required_role: str | None = None):
     """
     Retorna uma dependência FastAPI que:
@@ -290,6 +298,21 @@ def require_user(required_role: str | None = None):
                     headers={"X-Reason": "onboarding_incompleto"},
                 )
 
+        # Vínculos de setor do usuário (pode ter vários setores/empresas)
+        from models import UserSetor
+        setores_res = await db.execute(
+            select(UserSetor).where(
+                UserSetor.user_id == user.id, UserSetor.ativo == True  # noqa: E712
+            )
+        )
+        setores = [
+            {"setor": s.setor, "empresa": s.empresa, "principal": s.principal}
+            for s in setores_res.scalars().all()
+        ]
+        # Garante que exista ao menos o setor/empresa principal
+        if not setores:
+            setores = [{"setor": user.sector, "empresa": user.company, "principal": True}]
+
         return {
             "user_id": str(user.id),
             "email": str(user.email),
@@ -297,6 +320,7 @@ def require_user(required_role: str | None = None):
             "role": user.role,
             "company": user.company,
             "sector": user.sector,
+            "setores": setores,
             "provider": provider,
             "acesso_relatorio": user.acesso_relatorio,
         }

@@ -4,7 +4,7 @@ from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from database import get_db
-from models import User
+from models import User, UserSetor
 from auth import hash_password, verify_password, create_local_token, require_user
 from limiter import limiter
 
@@ -45,6 +45,25 @@ class MeResponse(BaseModel):
     acesso_relatorio: bool
     must_change_password: bool
     onboarding_completed: bool
+    setores: list[dict]
+
+
+async def _load_setores(db: AsyncSession, user_id) -> list[dict]:
+    result = await db.execute(
+        select(UserSetor).where(UserSetor.user_id == user_id, UserSetor.ativo == True)  # noqa: E712
+    )
+    setores = [
+        {"setor": s.setor, "empresa": s.empresa, "principal": s.principal}
+        for s in result.scalars().all()
+    ]
+    if not setores:
+        # Defensivo: se o usuário ainda não tem vínculo (ex: admin do setup),
+        # devolve o setor/empresa principal do perfil.
+        u = (await db.execute(select(User).where(User.id == user_id))).scalar_one_or_none()
+        if u:
+            return [{"setor": u.sector, "empresa": u.company, "principal": True}]
+        return []
+    return setores
 
 
 @router.get("/me", response_model=MeResponse)
@@ -72,6 +91,7 @@ async def me(
         acesso_relatorio=user.acesso_relatorio,
         must_change_password=user.must_change_password,
         onboarding_completed=user.onboarding_completed,
+        setores=await _load_setores(db, user.id),
     )
 
 
@@ -105,6 +125,7 @@ async def login(request: Request, body: LoginRequest, db: AsyncSession = Depends
             "email": user.email,
             "company": user.company,
             "sector": user.sector,
+            "setores": await _load_setores(db, user.id),
             "role": user.role,
             "avatar_url": user.avatar_url,
             "acesso_relatorio": user.acesso_relatorio,
@@ -135,6 +156,10 @@ async def setup_first_admin(request: Request, body: SetupRequest, db: AsyncSessi
         onboarding_completed=True,
     )
     db.add(admin)
+    await db.flush()
+    db.add(UserSetor(
+        user_id=admin.id, setor="Customer_Service", empresa="ACC", principal=True
+    ))
     await db.commit()
     await db.refresh(admin)
 

@@ -35,6 +35,37 @@ class User(Base):
 
     fcas_criados: Mapped[list["FCA"]] = relationship("FCA", back_populates="criado_por_user", foreign_keys="FCA.created_by")
     etapas_respondidas: Mapped[list["FCAEtapa"]] = relationship("FCAEtapa", back_populates="respondido_por_user")
+    setores: Mapped[list["UserSetor"]] = relationship(
+        "UserSetor", back_populates="user", cascade="all, delete-orphan"
+    )
+
+
+class UserSetor(Base):
+    """Vínculo de um usuário a um (setor, empresa).
+
+    Um usuário pode ter vários vínculos (ex: PCP-SINOBRAS e Qualidade-SINOBRAS).
+    O vínculo `principal` é o que alimenta User.sector/company (compatibilidade).
+    Usado para: fila do dashboard, notificações, permissões de visualização,
+    resposta de etapas e escolha do "setor solicitante" ao abrir um FCA.
+    """
+    __tablename__ = "user_setores"
+    __table_args__ = (
+        UniqueConstraint("user_id", "setor", "empresa", name="uq_user_setores_user_setor_empresa"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    setor: Mapped[str] = mapped_column(String(30), nullable=False)
+    empresa: Mapped[str] = mapped_column(String(20), nullable=False)
+    principal: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    ativo: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
+
+    user: Mapped["User"] = relationship("User", back_populates="setores")
 
 
 class OpcaoLista(Base):

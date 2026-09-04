@@ -16,7 +16,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, func
 from database import get_db
-from models import Notificacao, User
+from models import Notificacao, User, UserSetor
 from auth import require_user
 from ws_manager import manager
 import storage
@@ -177,7 +177,12 @@ async def criar_comunicado(
     # Resolve destinatários
     q = select(User).where(User.is_active == True)  # noqa: E712
     if body.destino == "setor" and body.setor and body.empresa:
-        q = q.where(User.sector == body.setor, User.company == body.empresa)
+        # Considera usuários com o setor/empresa em qualquer vínculo do perfil
+        q = (
+            q.join(UserSetor, UserSetor.user_id == User.id)
+            .where(UserSetor.setor == body.setor, UserSetor.empresa == body.empresa)
+            .distinct()
+        )
     elif body.destino == "usuario" and body.user_id:
         q = q.where(User.id == uuid.UUID(body.user_id))
     # 'todos' → sem filtro adicional

@@ -29,7 +29,7 @@
     <table v-else class="fca-table card">
       <thead>
         <tr>
-          <th>Nome</th><th>E-mail</th><th>Empresa</th><th>Setor</th>
+          <th>Nome</th><th>E-mail</th><th>Setores</th>
           <th>Papel</th><th>Matrícula</th><th>Turno</th><th>Status</th><th>BI</th><th></th>
         </tr>
       </thead>
@@ -37,8 +37,17 @@
         <tr v-for="u in items" :key="u.id" :class="{ inactive: !u.is_active }">
           <td>{{ u.name }}</td>
           <td>{{ u.email }}</td>
-          <td>{{ u.company }}</td>
-          <td>{{ u.sector }}</td>
+          <td>
+            <div class="setores-chips">
+              <span
+                v-for="v in u.setores || []"
+                :key="v.setor + '|' + v.empresa"
+                :class="['setor-chip', { 'setor-chip-principal': v.principal }]"
+                :title="v.principal ? 'Setor principal' : ''"
+              >{{ v.setor }} · {{ v.empresa }}</span>
+              <span v-if="!u.setores?.length" class="muted-cell">{{ u.sector }} · {{ u.company }}</span>
+            </div>
+          </td>
           <td><span :class="['badge', u.role === 'admin' ? 'badge-em_andamento' : 'badge-aberto']">{{ u.role }}</span></td>
           <td>{{ u.matricula || '—' }}</td>
           <td>{{ u.turno || '—' }}</td>
@@ -138,6 +147,14 @@ onMounted(async () => {
 .fca-table tbody tr.inactive td { opacity: .5; }
 .fca-table tbody tr:hover td { background: var(--color-primary-50); }
 .actions { display: flex; gap: var(--space-2); }
+
+.setores-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.setor-chip {
+  font-size: var(--font-size-xs); padding: 2px var(--space-2);
+  background: var(--color-neutral-100); border-radius: var(--radius-full);
+  color: var(--color-neutral-700); white-space: nowrap;
+}
+.setor-chip-principal { background: var(--color-primary-50); color: var(--color-primary-700); font-weight: var(--font-weight-semibold); }
 
 .toggle-btn {
   padding: var(--space-1) var(--space-2); border-radius: var(--radius-md);

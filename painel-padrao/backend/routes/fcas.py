@@ -13,7 +13,7 @@ from sqlalchemy import select, func, or_, and_, cast, Text, text as sa_text
 from sqlalchemy.orm import selectinload
 from database import get_db
 from models import User, FCA, FCAEtapa, OpcaoLista, AreaEmpresa
-from auth import require_user
+from auth import require_user, user_tem_setor
 from business import (
     CAUSAS, ACOES, UFS, SECTORS_CAN_OPEN
 )
@@ -79,12 +79,12 @@ def _can_view(fca: FCA, etapas: list[FCAEtapa], user: dict) -> bool:
     # Cancelados são invisíveis para não-admins
     if fca.status == "cancelado":
         return False
-    # Mesmo setor/empresa que abriu
-    if fca.setor_solicitante == user["sector"] and fca.empresa_solicitante == user["company"]:
+    # Mesmo setor/empresa que abriu (qualquer vínculo do usuário)
+    if user_tem_setor(user, fca.setor_solicitante, fca.empresa_solicitante):
         return True
     # Tem ou teve etapa na fila
     return any(
-        e.setor == user["sector"] and e.empresa == user["company"]
+        user_tem_setor(user, e.setor, e.empresa)
         for e in etapas
     )
 
@@ -249,6 +249,10 @@ class FCACreate(BaseModel):
     detalhe: str | None = None
     anexo_url: str | None = None          # legado, mantido por compatibilidade
     anexo_urls: list[str] = []            # nova forma: múltiplos anexos
+    # Setor solicitante: obrigatório quando o usuário tem mais de um vínculo.
+    # Usado para abrir o FCA "como se fosse" de um dos setores do perfil.
+    setor_solicitante: str | None = None
+    empresa_solicitante: str | None = None
 
 
 class EncaminharItem(BaseModel):
@@ -291,20 +295,15 @@ async def list_fcas(
     )
 
     if current["role"] != "admin":
-        stmt = stmt.join(FCAEtapa, FCAEtapa.fca_id == FCA.id, isouter=True).where(
-            or_(
-                # FCAs abertos pelo setor/empresa do usuário (qualquer pessoa do setor)
-                and_(
-                    FCA.setor_solicitante == current["sector"],
-                    FCA.empresa_solicitante == current["company"],
-                ),
-                # FCAs onde o setor/empresa do usuário tem ou teve etapa na fila
-                and_(
-                    FCAEtapa.setor == current["sector"],
-                    FCAEtapa.empresa == current["company"],
-                )
-            )
-        ).distinct()
+        pares = [(s["setor"], s["empresa"]) for s in current.get("setores", [])]
+        conds = or_(*[
+            and_(FCA.setor_solicitante == s, FCA.empresa_solicitante == e)
+            for s, e in pares
+        ] + [
+            and_(FCAEtapa.setor == s, FCAEtapa.empresa == e)
+            for s, e in pares
+        ])
+        stmt = stmt.join(FCAEtapa, FCAEtapa.fca_id == FCA.id, isouter=True).where(conds).distinct()
     else:
         # Admin vê tudo EXCETO cancelados (cancelados ficam só no filtro explícito)
         if not status_filter or status_filter != "cancelado":
@@ -366,18 +365,15 @@ async def export_fcas(
     )
 
     if current["role"] != "admin":
-        stmt = stmt.join(FCAEtapa, FCAEtapa.fca_id == FCA.id, isouter=True).where(
-            or_(
-                and_(
-                    FCA.setor_solicitante == current["sector"],
-                    FCA.empresa_solicitante == current["company"],
-                ),
-                and_(
-                    FCAEtapa.setor == current["sector"],
-                    FCAEtapa.empresa == current["company"],
-                )
-            )
-        ).distinct()
+        pares = [(s["setor"], s["empresa"]) for s in current.get("setores", [])]
+        conds = or_(*[
+            and_(FCA.setor_solicitante == s, FCA.empresa_solicitante == e)
+            for s, e in pares
+        ] + [
+            and_(FCAEtapa.setor == s, FCAEtapa.empresa == e)
+            for s, e in pares
+        ])
+        stmt = stmt.join(FCAEtapa, FCAEtapa.fca_id == FCA.id, isouter=True).where(conds).distinct()
     else:
         if not status_filter or status_filter != "cancelado":
             stmt = stmt.where(FCA.status != "cancelado")
@@ -480,9 +476,28 @@ async def create_fca(
     db: AsyncSession = Depends(get_db),
     current: dict = Depends(any_user),
 ):
-    if current["sector"] == "Producao":
-        raise HTTPException(status_code=403, detail="Setor Produção não pode abrir FCAs")
-    if current["sector"] not in SECTORS_CAN_OPEN:
+    # ── Setor solicitante ────────────────────────────────────────────────────
+    # Usuário com 1 vínculo → usa o perfil (automático). Com mais de um →
+    # precisa escolher "como se fosse" de um dos setores do perfil.
+    vinculos = current.get("setores", [])
+    if len(vinculos) == 1:
+        sol_setor = vinculos[0]["setor"]
+        sol_empresa = vinculos[0]["empresa"]
+    else:
+        if not body.setor_solicitante or not body.empresa_solicitante:
+            raise HTTPException(
+                status_code=422,
+                detail="Selecione o setor/empresa solicitante (seu perfil tem mais de um vínculo)",
+            )
+        if not user_tem_setor(current, body.setor_solicitante, body.empresa_solicitante):
+            raise HTTPException(
+                status_code=403,
+                detail="Setor solicitante não pertence ao seu perfil",
+            )
+        sol_setor = body.setor_solicitante
+        sol_empresa = body.empresa_solicitante
+
+    if sol_setor not in SECTORS_CAN_OPEN:
         raise HTTPException(status_code=403, detail="Seu setor não tem permissão para abrir FCAs")
 
     if body.causa not in CAUSAS:
@@ -511,9 +526,9 @@ async def create_fca(
 
     triagem = (body.area_causadora, body.empresa_causadora)
 
-    # Não pode abrir FCA para o próprio setor/empresa
+    # Não pode abrir FCA para o próprio setor/empresa (o setor escolhido como solicitante)
     setor_destino, empresa_destino = triagem
-    if setor_destino == current["sector"] and empresa_destino == current["company"]:
+    if setor_destino == sol_setor and empresa_destino == sol_empresa:
         raise HTTPException(status_code=422, detail="Você não pode abrir um FCA direcionado ao seu próprio setor")
 
     year = datetime.now(timezone.utc).year
@@ -534,8 +549,8 @@ async def create_fca(
         detalhe=body.detalhe,
         anexo_url=body.anexo_urls[0] if body.anexo_urls else body.anexo_url,
         anexo_urls=body.anexo_urls if body.anexo_urls else ([body.anexo_url] if body.anexo_url else None),
-        setor_solicitante=current["sector"],
-        empresa_solicitante=current["company"],
+        setor_solicitante=sol_setor,
+        empresa_solicitante=sol_empresa,
         area_causadora=body.area_causadora,
         empresa_causadora=body.empresa_causadora,
         status="aberto",
@@ -636,7 +651,7 @@ async def responder_fca(
     if not etapa_atual:
         raise HTTPException(status_code=409, detail="Não há etapa ativa neste FCA")
 
-    if etapa_atual.setor != current["sector"] or etapa_atual.empresa != current["company"]:
+    if not user_tem_setor(current, etapa_atual.setor, etapa_atual.empresa):
         raise HTTPException(status_code=403, detail="Não é a vez do seu setor responder este FCA")
 
     if etapa_atual.status == "concluido":
@@ -757,7 +772,7 @@ async def encerrar_fca(
 
     # Só o setor solicitante pode encerrar
     if current["role"] != "admin":
-        if fca.setor_solicitante != current["sector"] or fca.empresa_solicitante != current["company"]:
+        if not user_tem_setor(current, fca.setor_solicitante, fca.empresa_solicitante):
             raise HTTPException(status_code=403, detail="Apenas o setor solicitante pode encerrar o FCA")
 
     fca.status = "encerrado"
@@ -810,10 +825,7 @@ async def apontar_causa(
         raise HTTPException(status_code=409, detail="Não há etapa ativa neste FCA")
 
     primeira_etapa = min(fca.etapas, key=lambda e: e.order_index)
-    if (
-        primeira_etapa.setor != current["sector"]
-        or primeira_etapa.empresa != current["company"]
-    ):
+    if not user_tem_setor(current, primeira_etapa.setor, primeira_etapa.empresa):
         raise HTTPException(
             status_code=403,
             detail="Apenas o setor causador inicial pode apontar causa",

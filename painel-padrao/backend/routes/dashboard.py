@@ -12,19 +12,32 @@ router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 any_user = require_user()
 
 
+def _pares_setores(current: dict) -> list[tuple[str, str]]:
+    return [(s["setor"], s["empresa"]) for s in current.get("setores", [])]
+
+
+def _cond_etapas(pares) -> list:
+    return [and_(FCAEtapa.setor == s, FCAEtapa.empresa == e) for s, e in pares]
+
+
+def _cond_solicitantes(pares) -> list:
+    return [and_(FCA.setor_solicitante == s, FCA.empresa_solicitante == e) for s, e in pares]
+
+
 @router.get("/")
 async def dashboard(
     db: AsyncSession = Depends(get_db),
     current: dict = Depends(any_user),
 ):
-    # FCAs onde é a vez do setor do usuário
+    pares = _pares_setores(current)
+
+    # FCAs onde é a vez de um dos setores do usuário
     minha_fila_q = (
         select(FCA)
         .options(selectinload(FCA.etapas), selectinload(FCA.criado_por_user))
         .join(FCAEtapa, FCAEtapa.fca_id == FCA.id)
         .where(
-            FCAEtapa.setor == current["sector"],
-            FCAEtapa.empresa == current["company"],
+            or_(*_cond_etapas(pares)),
             FCAEtapa.status.in_(["pendente", "em_andamento"]),
         )
         .distinct()
@@ -85,16 +98,7 @@ async def dashboard(
     base_filter: list = []
     if current["role"] != "admin":
         base_filter = [
-            or_(
-                and_(
-                    FCA.setor_solicitante == current["sector"],
-                    FCA.empresa_solicitante == current["company"],
-                ),
-                and_(
-                    FCAEtapa.setor == current["sector"],
-                    FCAEtapa.empresa == current["company"],
-                )
-            )
+            or_(*_cond_solicitantes(pares), *_cond_etapas(pares))
         ]
 
     async def count_status(s: str) -> int:
@@ -131,6 +135,7 @@ async def dashboard_metricas(
 ):
     """Retorna série temporal, ranking de áreas causadoras e contador de atrasados."""
     now = datetime.now(timezone.utc)
+    pares = _pares_setores(current)
 
     # ── Base de visibilidade ──────────────────────────────────────────────────
     def _apply_visibility(stmt):
@@ -138,16 +143,7 @@ async def dashboard_metricas(
             return (
                 stmt.join(FCAEtapa, FCAEtapa.fca_id == FCA.id, isouter=True)
                 .where(
-                    or_(
-                        and_(
-                            FCA.setor_solicitante == current["sector"],
-                            FCA.empresa_solicitante == current["company"],
-                        ),
-                        and_(
-                            FCAEtapa.setor == current["sector"],
-                            FCAEtapa.empresa == current["company"],
-                        ),
-                    )
+                    or_(*_cond_solicitantes(pares), *_cond_etapas(pares))
                 )
                 .distinct()
             )
@@ -203,10 +199,7 @@ async def dashboard_metricas(
         )
     )
     if current["role"] != "admin":
-        atrasados_stmt = atrasados_stmt.where(
-            FCAEtapa.setor == current["sector"],
-            FCAEtapa.empresa == current["company"],
-        )
+        atrasados_stmt = atrasados_stmt.where(or_(*_cond_etapas(pares)))
     atrasados = (await db.execute(atrasados_stmt)).scalar() or 0
 
     return {
